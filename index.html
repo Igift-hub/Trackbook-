@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Welcome to iGift Hub</title>
+</head>
+<body>
+  <h1>Hello, world! 🌍</h1>
+  <p>This is my first GitHub Pages site.</p>
+
+  <!-- 🕒 Clock Feature -->
+  <div id="clock" style="font-size: 20px; font-weight: bold; margin-top: 20px;"></div>
+
+  <script>
+    function updateClock() {
+      const now = new Date();
+      const time = now.toLocaleTimeString();
+      document.getElementById('clock').innerText = '🕒 ' + time;
+    }
+
+    setInterval(updateClock, 1000);
+    updateClock();
+  </script>
+</body>
+</html>
