@@ -1,282 +1,314 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, onSnapshot, doc, deleteDoc, updateDoc } from 'firebase/firestore';
-import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from 'firebase/auth';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML/JS To-Do List</title>
+    <!-- We're using Tailwind CSS for easy and beautiful styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Import the Firebase SDKs -->
+    <script type="module">
+        // Import the necessary Firebase modules.
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, orderBy, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-// This is the main App component for our to-do list.
-// It uses React hooks to manage state and Firebase to handle data.
-const App = () => {
-  // Use state to manage the list of to-dos.
-  const [todos, setTodos] = useState([]);
-  // Use state to manage the input field for new to-dos.
-  const [newTodo, setNewTodo] = useState('');
-  // Use state to manage the Firebase instances.
-  const [db, setDb] = useState(null);
-  const [auth, setAuth] = useState(null);
-  // Use state to store the authenticated user's ID.
-  const [userId, setUserId] = useState(null);
-  // Use state to track the editing state.
-  const [editingTodoId, setEditingTodoId] = useState(null);
-  const [editingText, setEditingText] = useState('');
+        // Global variables to hold our Firebase instances.
+        let app, db, auth;
+        // User ID variable to manage user-specific data.
+        let userId = null;
 
-  // The useEffect hook runs once when the component mounts to initialize Firebase.
-  useEffect(() => {
-    try {
-      // Safely access the global variables provided by the Canvas environment.
-      const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-      const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-      
-      // Initialize the Firebase app with the provided configuration.
-      const app = initializeApp(firebaseConfig);
-      // Get the Firestore and Auth services.
-      const firestoreDb = getFirestore(app);
-      const firebaseAuth = getAuth(app);
+        // Function to initialize Firebase and set up listeners.
+        const initFirebase = async () => {
+            try {
+                // Get the Firebase configuration from the Canvas environment.
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-      // Set the state with the initialized services.
-      setDb(firestoreDb);
-      setAuth(firebaseAuth);
+                // Initialize the app.
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
 
-      // Listen for authentication state changes.
-      const unsubscribeAuth = onAuthStateChanged(firebaseAuth, async (user) => {
-        if (user) {
-          // If a user is signed in, set their ID.
-          setUserId(user.uid);
-        } else {
-          // If no user is signed in, sign in anonymously or with the custom token.
-          if (initialAuthToken) {
-            await signInWithCustomToken(firebaseAuth, initialAuthToken);
-          } else {
-            await signInAnonymously(firebaseAuth);
-          }
-        }
-      });
-      
-      // Clean up the auth listener when the component unmounts.
-      return () => unsubscribeAuth();
-    } catch (error) {
-      console.error("Failed to initialize Firebase:", error);
-    }
-  }, []);
+                // Wait for the authentication state to be ready.
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        // User is signed in.
+                        userId = user.uid;
+                        // Start the Firestore listener for to-do items.
+                        setupFirestoreListener();
+                        // Display the user ID on the page.
+                        document.getElementById('user-id').textContent = userId;
+                    } else {
+                        // User is signed out, try to sign in anonymously or with custom token.
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(auth, initialAuthToken);
+                        } else {
+                            await signInAnonymously(auth);
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Firebase initialization error:", error);
+            }
+        };
 
-  // This useEffect hook listens for real-time updates from Firestore.
-  useEffect(() => {
-    // We only attach the listener if Firebase and the user are ready.
-    if (db && userId) {
-      // Use the provided app ID to create a unique collection path.
-      const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-      // The collection path is specific to this app and the user.
-      const todosCollectionPath = `/artifacts/${appId}/users/${userId}/todos`;
-      const todosCollectionRef = collection(db, todosCollectionPath);
-      
-      // onSnapshot sets up a real-time listener for the collection.
-      const unsubscribe = onSnapshot(todosCollectionRef, (querySnapshot) => {
-        const todosData = [];
-        // Iterate through the documents and build the to-do list.
-        querySnapshot.forEach((doc) => {
-          todosData.push({ id: doc.id, ...doc.data() });
-        });
-        // Sort the to-dos by creation date to maintain order.
-        todosData.sort((a, b) => a.createdAt.toDate() - b.createdAt.toDate());
-        // Update the state with the new list of to-dos.
-        setTodos(todosData);
-      }, (error) => {
-        console.error("Error fetching todos: ", error);
-      });
+        // Function to set up the real-time listener for Firestore data.
+        const setupFirestoreListener = () => {
+            if (!db || !userId) {
+                console.error("Database or user ID not available.");
+                return;
+            }
 
-      // Clean up the Firestore listener when the component unmounts.
-      return () => unsubscribe();
-    }
-  }, [db, userId]); // Re-run this effect if db or userId change.
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const todosCollectionPath = `/artifacts/${appId}/users/${userId}/todos`;
+            const todosCollection = collection(db, todosCollectionPath);
+            const q = query(todosCollection);
 
-  // Handles adding a new to-do item to Firestore.
-  const handleAddTodo = async (e) => {
-    e.preventDefault();
-    // Check if the input is not empty before adding.
-    if (newTodo.trim() === '') return;
+            // onSnapshot listens for real-time changes.
+            onSnapshot(q, (snapshot) => {
+                const todos = [];
+                snapshot.forEach(doc => {
+                    todos.push({ id: doc.id, ...doc.data() });
+                });
+                // Sort todos by creation timestamp to maintain order.
+                todos.sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
+                // Render the updated list of todos.
+                renderTodos(todos);
+            }, (error) => {
+                console.error("Error getting documents:", error);
+            });
+        };
 
-    if (db && userId) {
-      try {
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const todosCollectionPath = `/artifacts/${appId}/users/${userId}/todos`;
+        // Renders the to-do list on the page.
+        const renderTodos = (todos) => {
+            const listContainer = document.getElementById('todo-list-container');
+            listContainer.innerHTML = ''; // Clear the existing list.
+
+            if (todos.length === 0) {
+                listContainer.innerHTML = `
+                    <p class="text-center text-gray-500 italic mt-4">
+                        Your to-do list is empty! Add a new task above.
+                    </p>
+                `;
+                return;
+            }
+
+            todos.forEach(todo => {
+                const todoItem = document.createElement('div');
+                todoItem.className = 'flex items-center justify-between bg-white p-4 rounded-xl shadow transition-all duration-200 hover:bg-gray-100';
+                todoItem.dataset.id = todo.id;
+                todoItem.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" ${todo.completed ? 'checked' : ''} class="task-checkbox w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 transition-colors cursor-pointer" />
+                        <span class="task-text text-black text-base md:text-lg ${todo.completed ? 'line-through text-gray-500' : ''} transition-colors duration-200">
+                            ${todo.text}
+                        </span>
+                        <input type="text" class="edit-input hidden flex-grow p-2 text-sm text-black bg-white rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500" value="${todo.text}" />
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="edit-btn text-gray-500 hover:text-blue-500 transition-colors duration-200" aria-label="Edit todo">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-3.832 7.078l-3.32 3.32a1 1 0 01-.409.288l-3.23 1.077a.5.5 0 01-.62-.62l1.076-3.23a1 1 0 01.288-.409l3.32-3.32 2.828 2.828z" />
+                            </svg>
+                        </button>
+                        <button class="save-btn hidden p-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                            Save
+                        </button>
+                        <button class="cancel-btn hidden p-2 text-sm font-medium text-white bg-gray-500 rounded-lg hover:bg-gray-600 transition-colors">
+                            Cancel
+                        </button>
+                        <button class="delete-btn text-gray-500 hover:text-blue-500 transition-colors duration-200" aria-label="Delete todo">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
+                            </svg>
+                        </button>
+                    </div>
+                `;
+                listContainer.appendChild(todoItem);
+            });
+        };
         
-        // Add a new document to the todos collection.
-        await addDoc(collection(db, todosCollectionPath), {
-          text: newTodo,
-          completed: false,
-          createdAt: new Date(),
-        });
-        // Clear the input field after a successful add.
-        setNewTodo('');
-      } catch (e) {
-        console.error("Error adding document: ", e);
-      }
-    }
-  };
+        // Adds a new to-do item to Firestore.
+        const addTodo = async (text) => {
+            if (!db || !userId) return;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const todosCollectionPath = `/artifacts/${appId}/users/${userId}/todos`;
 
-  // Handles toggling the completion status of a to-do.
-  const handleToggleComplete = async (id, completed) => {
-    if (db && userId) {
-      try {
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const todoDocRef = doc(db, `/artifacts/${appId}/users/${userId}/todos`, id);
-        // Update the document's 'completed' field.
-        await updateDoc(todoDocRef, {
-          completed: !completed,
-        });
-      } catch (e) {
-        console.error("Error updating document: ", e);
-      }
-    }
-  };
+            try {
+                await addDoc(collection(db, todosCollectionPath), {
+                    text: text,
+                    completed: false,
+                    createdAt: serverTimestamp(),
+                });
+            } catch (e) {
+                console.error("Error adding document: ", e);
+            }
+        };
 
-  // Handles deleting a to-do item.
-  const handleDeleteTodo = async (id) => {
-    if (db && userId) {
-      try {
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const todoDocRef = doc(db, `/artifacts/${appId}/users/${userId}/todos`, id);
-        // Delete the document.
-        await deleteDoc(todoDocRef);
-      } catch (e) {
-        console.error("Error deleting document: ", e);
-      }
-    }
-  };
-  
-  // Handles starting the editing process for a to-do item.
-  const startEditing = (todo) => {
-    setEditingTodoId(todo.id);
-    setEditingText(todo.text);
-  };
-  
-  // Handles saving the edited to-do item.
-  const handleSaveEdit = async (id) => {
-    if (db && userId) {
-      try {
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const todoDocRef = doc(db, `/artifacts/${appId}/users/${userId}/todos`, id);
-        await updateDoc(todoDocRef, {
-          text: editingText,
-        });
-        setEditingTodoId(null);
-        setEditingText('');
-      } catch (e) {
-        console.error("Error updating document:", e);
-      }
-    }
-  };
+        // Toggles the 'completed' status of a to-do.
+        const toggleComplete = async (id, completed) => {
+            if (!db || !userId) return;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const todoDocRef = doc(db, `/artifacts/${appId}/users/${userId}/todos`, id);
 
-  // Handles canceling the editing process.
-  const handleCancelEdit = () => {
-    setEditingTodoId(null);
-    setEditingText('');
-  };
+            try {
+                await updateDoc(todoDocRef, {
+                    completed: !completed
+                });
+            } catch (e) {
+                console.error("Error updating document: ", e);
+            }
+        };
 
-  // The main UI for our application.
-  return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4 md:p-8 font-sans">
-      <div className="w-full max-w-lg bg-gray-50 rounded-2xl shadow-xl p-6 md:p-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold text-center text-black mb-6 md:mb-8 tracking-tight">
-          React To-Do List 🚀
-        </h1>
-        {/* Displays the user ID, which is important for multi-user collaboration in the Canvas environment. */}
-        {userId && (
-          <p className="text-sm text-gray-500 text-center mb-4">
-            User ID: <span className="font-mono text-xs break-all">{userId}</span>
-          </p>
-        )}
+        // Deletes a to-do item.
+        const deleteTodo = async (id) => {
+            if (!db || !userId) return;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const todoDocRef = doc(db, `/artifacts/${appId}/users/${userId}/todos`, id);
+
+            try {
+                await deleteDoc(todoDocRef);
+            } catch (e) {
+                console.error("Error deleting document: ", e);
+            }
+        };
         
-        {/* The form for adding new to-dos. */}
-        <form onSubmit={handleAddTodo} className="flex gap-2 md:gap-4 mb-6">
-          <input
-            type="text"
-            value={newTodo}
-            onChange={(e) => setNewTodo(e.target.value)}
-            placeholder="Add a new task..."
-            className="flex-grow p-3 md:p-4 text-sm md:text-base text-black bg-white border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-          />
-          <button
-            type="submit"
-            className="p-3 md:p-4 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
-          >
-            Add
-          </button>
-        </form>
+        // Handles the edit process.
+        const handleEdit = async (id, newText) => {
+             if (!db || !userId) return;
+            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+            const todoDocRef = doc(db, `/artifacts/${appId}/users/${userId}/todos`, id);
+            try {
+                await updateDoc(todoDocRef, {
+                    text: newText,
+                });
+            } catch (e) {
+                console.error("Error updating document:", e);
+            }
+        };
+        
+        // Event listeners for the form and the to-do list.
+        window.onload = () => {
+            initFirebase();
 
-        {/* The list of to-do items. */}
-        <div className="space-y-3">
-          {todos.map((todo) => (
-            <div
-              key={todo.id}
-              className="flex items-center justify-between bg-white p-4 rounded-xl shadow transition-all duration-200 hover:bg-gray-100"
-            >
-              {editingTodoId === todo.id ? (
-                // Editing state
-                <div className="flex-grow flex items-center gap-2">
-                  <input
-                    type="text"
-                    value={editingText}
-                    onChange={(e) => setEditingText(e.target.value)}
-                    className="flex-grow p-2 text-sm text-black bg-white rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                  />
-                  <button onClick={() => handleSaveEdit(todo.id)} className="p-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-                    Save
-                  </button>
-                  <button onClick={handleCancelEdit} className="p-2 text-sm font-medium text-white bg-gray-500 rounded-lg hover:bg-gray-600 transition-colors">
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                // Normal view state
-                <>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={todo.completed}
-                      onChange={() => handleToggleComplete(todo.id, todo.completed)}
-                      className="w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 transition-colors cursor-pointer"
-                    />
-                    <span
-                      className={`text-black text-base md:text-lg ${
-                        todo.completed ? 'line-through text-gray-500' : ''
-                      } transition-colors duration-200`}
-                    >
-                      {todo.text}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => startEditing(todo)}
-                      className="text-gray-500 hover:text-blue-500 transition-colors duration-200"
-                      aria-label="Edit todo"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-3.832 7.078l-3.32 3.32a1 1 0 01-.409.288l-3.23 1.077a.5.5 0 01-.62-.62l1.076-3.23a1 1 0 01.288-.409l3.32-3.32 2.828 2.828z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTodo(todo.id)}
-                      className="text-gray-500 hover:text-blue-500 transition-colors duration-200"
-                      aria-label="Delete todo"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          ))}
-          {todos.length === 0 && (
-            <p className="text-center text-gray-500 italic mt-4">
-              Your to-do list is empty! Add a new task above.
+            const form = document.getElementById('todo-form');
+            const input = document.getElementById('todo-input');
+            const listContainer = document.getElementById('todo-list-container');
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const text = input.value.trim();
+                if (text !== '') {
+                    addTodo(text);
+                    input.value = '';
+                }
+            });
+
+            listContainer.addEventListener('click', async (e) => {
+                const todoItem = e.target.closest('div[data-id]');
+                if (!todoItem) return;
+                const id = todoItem.dataset.id;
+
+                if (e.target.closest('.task-checkbox')) {
+                    const isChecked = e.target.checked;
+                    await toggleComplete(id, !isChecked);
+                }
+
+                if (e.target.closest('.delete-btn')) {
+                    await deleteTodo(id);
+                }
+                
+                if (e.target.closest('.edit-btn')) {
+                    const textSpan = todoItem.querySelector('.task-text');
+                    const editInput = todoItem.querySelector('.edit-input');
+                    const editBtn = todoItem.querySelector('.edit-btn');
+                    const deleteBtn = todoItem.querySelector('.delete-btn');
+                    const saveBtn = todoItem.querySelector('.save-btn');
+                    const cancelBtn = todoItem.querySelector('.cancel-btn');
+
+                    textSpan.classList.add('hidden');
+                    editInput.classList.remove('hidden');
+                    editInput.focus();
+                    editBtn.classList.add('hidden');
+                    deleteBtn.classList.add('hidden');
+                    saveBtn.classList.remove('hidden');
+                    cancelBtn.classList.remove('hidden');
+                }
+                
+                if (e.target.closest('.save-btn')) {
+                    const editInput = todoItem.querySelector('.edit-input');
+                    const newText = editInput.value.trim();
+                    if (newText !== '') {
+                         await handleEdit(id, newText);
+                    }
+                    
+                    const textSpan = todoItem.querySelector('.task-text');
+                    const editBtn = todoItem.querySelector('.edit-btn');
+                    const deleteBtn = todoItem.querySelector('.delete-btn');
+                    const saveBtn = todoItem.querySelector('.save-btn');
+                    const cancelBtn = todoItem.querySelector('.cancel-btn');
+                    
+                    textSpan.classList.remove('hidden');
+                    editInput.classList.add('hidden');
+                    editBtn.classList.remove('hidden');
+                    deleteBtn.classList.remove('hidden');
+                    saveBtn.classList.add('hidden');
+                    cancelBtn.classList.add('hidden');
+                }
+
+                if (e.target.closest('.cancel-btn')) {
+                    const textSpan = todoItem.querySelector('.task-text');
+                    const editInput = todoItem.querySelector('.edit-input');
+                    const editBtn = todoItem.querySelector('.edit-btn');
+                    const deleteBtn = todoItem.querySelector('.delete-btn');
+                    const saveBtn = todoItem.querySelector('.save-btn');
+                    const cancelBtn = todoItem.querySelector('.cancel-btn');
+
+                    textSpan.classList.remove('hidden');
+                    editInput.classList.add('hidden');
+                    editBtn.classList.remove('hidden');
+                    deleteBtn.classList.remove('hidden');
+                    saveBtn.classList.add('hidden');
+                    cancelBtn.classList.add('hidden');
+                }
+            });
+        };
+    </script>
+</head>
+<body class="bg-white font-sans text-black">
+    <div class="min-h-screen flex items-center justify-center p-4 md:p-8">
+        <div class="w-full max-w-lg bg-white rounded-2xl shadow-xl p-6 md:p-8">
+            <h1 class="text-3xl md:text-4xl font-extrabold text-center text-blue-600 mb-6 md:mb-8 tracking-tight">
+                To-Do List 📝
+            </h1>
+            <!-- User ID is displayed here for multi-user context. -->
+            <p class="text-sm text-gray-500 text-center mb-4">
+                User ID: <span id="user-id" class="font-mono text-xs break-all"></span>
             </p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-};
+            
+            <!-- Form for adding new to-dos -->
+            <form id="todo-form" class="flex gap-2 md:gap-4 mb-6">
+                <input
+                    id="todo-input"
+                    type="text"
+                    placeholder="Add a new task..."
+                    class="flex-grow p-3 md:p-4 text-sm md:text-base text-black bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
+                />
+                <button
+                    type="submit"
+                    class="p-3 md:p-4 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
+                >
+                    Add
+                </button>
+            </form>
 
-export default App;
+            <!-- Container for the to-do list items -->
+            <div id="todo-list-container" class="space-y-3">
+                <!-- To-do items will be dynamically added here by JavaScript -->
+            </div>
+        </div>
+    </div>
+</body>
+  </html>
+      
