@@ -1,46 +1,66 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>School Social App</title>
-
+  <title>Global Campus Connect</title>
   <!-- Tailwind CSS CDN for styling -->
   <script src="https://cdn.tailwindcss.com"></script>
-
   <!-- React and ReactDOM CDNs -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-
   <!-- Babel CDN for JSX support in the browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
+  <!-- UUID CDN for unique IDs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+  <!-- bcrypt CDN for password hashing -->
+  <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <!-- Firebase SDKs -->
   <script type="module">
-    // Import Firebase services directly
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, query, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
     window.firebase = { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut };
     window.firestore = { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, query, where };
   </script>
-
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    body {
+      font-family: 'Inter', sans-serif;
+    }
     .app-input {
       @apply w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500;
     }
-
     .app-button-primary {
-      @apply w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition duration-300;
+      @apply w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg shadow-lg hover:bg-indigo-700 transition duration-300 transform hover:scale-105;
     }
-
+    .app-button-secondary {
+      @apply w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition duration-300 transform hover:scale-105;
+    }
     .app-button-danger {
-      @apply w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 transition duration-300;
+      @apply w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 transition duration-300 transform hover:scale-105;
+    }
+    .post-card {
+      @apply bg-white p-6 rounded-xl shadow-xl transition-all duration-300 hover:shadow-2xl;
+    }
+    .post-image {
+      @apply w-full rounded-lg;
+    }
+    .modal-background {
+      backdrop-filter: blur(5px);
+    }
+    /* Add a subtle animation to the header text */
+    @keyframes fadeInSlide {
+        from { opacity: 0; transform: translateY(-20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animated-header {
+      animation: fadeInSlide 0.8s ease-out;
     }
   </style>
 </head>
-
 <body>
   <div id="root"></div>
 
@@ -49,27 +69,50 @@
     const { useState, useEffect } = React;
     const { initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } = window.firebase;
     const { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, query, where } = window.firestore;
-
-    // Firebase config (use your actual config here)
-    const firebaseConfig = {
-      apiKey: "your-api-key",
-      authDomain: "your-auth-domain",
-      projectId: "your-project-id",
-      storageBucket: "your-storage-bucket",
-      messagingSenderId: "your-messaging-sender-id",
-      appId: "your-app-id"
-    };
-
-    // Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
-
+    const { v4: uuidv4 } = window.uuid;
+    
+    // Global variables from the Canvas environment
+    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
+    
+    // Hardcoded Admin Credentials for demo purposes
     const ADMIN_ID = 'admin';
     const ADMIN_PASSWORD = 'FARHAN';
 
+    // Helper function to handle sharing on WhatsApp
+    const shareOnWhatsApp = (text) => {
+      const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+      window.open(whatsappUrl, '_blank');
+    };
+
+    // Helper function to handle saving an image
+    const saveImage = (imageUrl, fileName) => {
+      const link = document.createElement('a');
+      link.href = imageUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    };
+
+    // Custom Modal component
+    const Modal = ({ title, text, onClose }) => (
+      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 modal-background flex items-center justify-center z-50 p-4">
+        <div className="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm text-center transform transition-all duration-300 scale-100">
+          <h3 className="text-xl font-bold mb-2">{title}</h3>
+          <p className="text-gray-700 mb-4">{text}</p>
+          <button onClick={onClose} className="app-button-primary">
+            OK
+          </button>
+        </div>
+      </div>
+    );
+
+    // Main App component
     const App = () => {
-      const [currentPage, setCurrentPage] = useState('login');
+      const [currentPage, setCurrentPage] = useState('landing');
+      const [isAuthReady, setIsAuthReady] = useState(false);
       const [user, setUser] = useState(null);
       const [role, setRole] = useState('');
       const [schoolId, setSchoolId] = useState('');
@@ -79,133 +122,461 @@
       const [registerPassword, setRegisterPassword] = useState('');
       const [postTitle, setPostTitle] = useState('');
       const [postContent, setPostContent] = useState('');
+      const [adminPosts, setAdminPosts] = useState([]);
       const [schoolPosts, setSchoolPosts] = useState([]);
+      const [showModal, setShowModal] = useState(false);
+      const [modalContent, setModalContent] = useState({ title: '', text: '' });
+      const [db, setDb] = useState(null);
+      const [auth, setAuth] = useState(null);
+      const [isLoading, setIsLoading] = useState(true);
 
-      const showMessage = (message) => {
-        alert(message);
+      const showMessage = (title, text) => {
+        setModalContent({ title, text });
+        setShowModal(true);
+      };
+
+      const closeModal = () => {
+        setShowModal(false);
       };
 
       useEffect(() => {
-        onAuthStateChanged(auth, (currentUser) => {
-          if (currentUser) {
-            setUser(currentUser);
+        const initializeFirebase = async () => {
+          try {
+            const app = initializeApp(firebaseConfig);
+            const dbInstance = getFirestore(app);
+            const authInstance = getAuth(app);
+            setDb(dbInstance);
+            setAuth(authInstance);
+
+            const unsubscribe = onAuthStateChanged(authInstance, (user) => {
+              if (user) {
+                setUser(user);
+              } else {
+                setUser(null);
+              }
+              setIsAuthReady(true);
+              setIsLoading(false);
+            });
+
+            if (initialAuthToken) {
+              await signInWithCustomToken(authInstance, initialAuthToken);
+            } else {
+              await signInAnonymously(authInstance);
+            }
+
+            return () => unsubscribe();
+
+          } catch (error) {
+            console.error("Firebase initialization failed:", error);
+            showMessage('Error', "Failed to initialize the app. Please try again later.");
+            setIsLoading(false);
           }
-        });
+        };
+
+        initializeFirebase();
       }, []);
 
-      const handleLogin = async () => {
-        if (loginId === ADMIN_ID && loginPassword === ADMIN_PASSWORD) {
-          showMessage('Admin login successful!');
-          setRole('admin');
-          setCurrentPage('admin-dashboard');
+      useEffect(() => {
+        if (isAuthReady && db && role === 'admin') {
+          const postsRef = collection(db, `/artifacts/${appId}/public/data/posts`);
+          const unsubscribe = onSnapshot(postsRef, (snapshot) => {
+            const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            fetchedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setAdminPosts(fetchedPosts);
+          });
+          return () => unsubscribe();
+        }
+      }, [isAuthReady, db, role, appId]);
+
+      useEffect(() => {
+        if (isAuthReady && db && role === 'school' && schoolId) {
+          const postsRef = collection(db, `/artifacts/${appId}/public/data/posts`);
+          const q = query(postsRef, where('schoolId', '==', schoolId));
+          const unsubscribe = onSnapshot(q, (snapshot) => {
+            const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            fetchedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+            setSchoolPosts(fetchedPosts);
+          });
+          return () => unsubscribe();
+        }
+      }, [isAuthReady, db, role, schoolId, appId]);
+
+
+      const handleRegister = async () => {
+        const id = registerSchoolId;
+        const password = registerPassword;
+
+        if (!id || !password) {
+          showMessage('Error', 'School ID and password are required.');
           return;
         }
 
         try {
-          const docRef = doc(db, "accounts", loginId);
+          const docRef = doc(db, `/artifacts/${appId}/public/data/accounts`, id);
           const docSnap = await getDoc(docRef);
 
           if (docSnap.exists()) {
-            const { passwordHash, role } = docSnap.data();
-            if (role !== 'school') {
-              showMessage('Invalid role for this account.');
-              return;
-            }
-            const match = await bcrypt.compare(loginPassword, passwordHash);
-            if (match) {
-              showMessage('School login successful!');
-              setRole('school');
-              setSchoolId(loginId);
-              setCurrentPage('school-dashboard');
-            } else {
-              showMessage('Invalid password.');
-            }
+            showMessage('Error', 'Account ID already exists. Please choose another.');
           } else {
-            showMessage('Account ID not found.');
+            const saltRounds = 10;
+            const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+            await setDoc(docRef, {
+              id: id,
+              passwordHash: hashedPassword,
+              role: 'school',
+            });
+            showMessage('Success', 'Registration successful! Please log in.');
+            setCurrentPage('login');
+            setRegisterSchoolId('');
+            setRegisterPassword('');
           }
         } catch (error) {
-          console.error("Login failed:", error);
-          showMessage(`Login failed: ${error.message}`);
+          console.error("Registration failed:", error);
+          showMessage('Error', `Registration failed: ${error.message}`);
         }
       };
 
-      const handlePost = async () => {
-        if (!postTitle || !postContent) {
-          showMessage('Please provide both title and content.');
+      const handleLogin = async () => {
+        const id = loginId;
+        const password = loginPassword;
+        
+        if (!id || !password) {
+          showMessage('Error', 'ID and password are required.');
+          return;
+        }
+        
+        if (id === ADMIN_ID && password === ADMIN_PASSWORD) {
+          showMessage('Success', 'Admin login successful!');
+          setSchoolId(id);
+          setRole('admin');
+          setCurrentPage('admin-dashboard');
+          setLoginId('');
+          setLoginPassword('');
           return;
         }
 
         try {
-          await addDoc(collection(db, 'posts'), {
-            title: postTitle,
-            content: postContent,
-            schoolId,
-            createdAt: new Date().toISOString(),
-          });
-          showMessage('Post created successfully!');
-          setPostTitle('');
-          setPostContent('');
+          const docRef = doc(db, `/artifacts/${appId}/public/data/accounts`, id);
+          const docSnap = await getDoc(docRef);
+
+          if (docSnap.exists()) {
+            const { passwordHash, role: storedRole } = docSnap.data();
+            if (storedRole !== 'school') {
+              showMessage('Error', 'Invalid role for this account.');
+              return;
+            }
+
+            const match = await bcrypt.compare(password, passwordHash);
+
+            if (match) {
+              showMessage('Success', 'School login successful!');
+              setSchoolId(id);
+              setRole('school');
+              setCurrentPage('school-dashboard');
+              setLoginId('');
+              setLoginPassword('');
+            } else {
+              showMessage('Error', 'Invalid password.');
+            }
+          } else {
+            showMessage('Error', 'Account ID not found.');
+          }
         } catch (error) {
-          showMessage(`Failed to create post: ${error.message}`);
+          console.error("Login failed:", error);
+          showMessage('Error', `Login failed: ${error.message}`);
         }
       };
 
-      const renderLoginPage = () => (
-        <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-          <h2 className="text-3xl font-bold text-gray-800 text-center mb-6">Login</h2>
-          <input
-            type="text"
-            placeholder="Account ID"
-            className="app-input"
-            value={loginId}
-            onChange={(e) => setLoginId(e.target.value)}
-          />
-          <input
-            type="password"
-            placeholder="Password"
-            className="app-input"
-            value={loginPassword}
-            onChange={(e) => setLoginPassword(e.target.value)}
-          />
-          <button onClick={handleLogin} className="app-button-primary">Login</button>
+      const handleLogout = async () => {
+        try {
+          if (auth && auth.currentUser) {
+            await signOut(auth);
+          }
+          setRole('');
+          setSchoolId('');
+          setCurrentPage('landing');
+          showMessage('Logged Out', 'You have been successfully logged out.');
+        } catch (error) {
+          console.error("Logout failed:", error);
+          showMessage('Error', `Logout failed: ${error.message}`);
+        }
+      };
+      
+      const handlePost = async () => {
+        if (!postTitle || !postContent) {
+          showMessage('Error', 'Title and content are required for a post.');
+          return;
+        }
+
+        const placeholderImageUrl = "https://placehold.co/600x400/292524/fff?text=Global+Campus+Connect";
+
+        try {
+          await addDoc(collection(db, `/artifacts/${appId}/public/data/posts`), {
+            title: postTitle,
+            content: postContent,
+            imageUrl: placeholderImageUrl,
+            schoolId: schoolId,
+            createdAt: new Date().toISOString(),
+          });
+          showMessage('Success', 'Post created successfully!');
+          setPostTitle('');
+          setPostContent('');
+        } catch (error) {
+          console.error("Error adding document: ", error);
+          showMessage('Error', `Failed to create post: ${error.message}`);
+        }
+      };
+
+      const renderLandingPage = () => (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-900 text-white">
+          <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center bg-gray-900 border-b border-gray-700">
+            <div className="flex items-center space-x-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-graduation-cap text-indigo-400"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.084a1 1 0 0 0-.019 1.838l8.59 3.908a2 2 0 0 0 1.66 0z"/><path d="M10.15 14.887a2 2 0 0 0 1.66 0l8.59-3.908"/><path d="M19.24 17.924a2 2 0 0 0 1.25-2.736L16.48 11.2a2 2 0 0 0-1.66 0L2.6 15.084a1 1 0 0 0-.019 1.838l3.77 1.716"/><path d="M13.25 18.06a2 2 0 0 0 1.66 0l5.85-2.66"/></svg>
+              <h1 className="text-xl font-bold">Global Campus Connect</h1>
+            </div>
+            <div className="flex space-x-4">
+              <button onClick={() => setCurrentPage('login')} className="px-4 py-2 text-indigo-400 font-semibold rounded-lg hover:bg-gray-800 transition duration-300">Login</button>
+              <button onClick={() => setCurrentPage('register')} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition duration-300">Register</button>
+            </div>
+          </header>
+          
+          <main className="text-center p-8 mt-24">
+            <h2 className="text-5xl md:text-7xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 to-sky-300 animated-header">
+              Connecting 2 Billion Students Globally
+            </h2>
+            <p className="text-xl md:text-2xl mt-4 text-gray-400 max-w-2xl mx-auto animated-header">
+              The world's leading social platform for students and educators to share news, events, and discoveries.
+            </p>
+            <div className="mt-10 space-x-4 flex justify-center">
+              <button onClick={() => setCurrentPage('register')} className="app-button-primary w-auto px-8">Join Now</button>
+              <button onClick={() => setCurrentPage('login')} className="bg-transparent border border-indigo-400 text-indigo-400 px-8 py-3 rounded-lg font-semibold hover:bg-indigo-600 hover:text-white transition duration-300 transform hover:scale-105">Login</button>
+            </div>
+          </main>
+          <footer className="absolute bottom-0 left-0 right-0 p-4 text-center text-gray-500 text-sm border-t border-gray-700">
+            <p>&copy; 2024 Global Campus Connect. All rights reserved.</p>
+          </footer>
         </div>
       );
 
-      const renderSchoolDashboard = () => (
-        <div className="bg-indigo-500 text-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
-          <h2 className="text-3xl font-bold text-center mb-4">Dashboard for {schoolId}</h2>
-          <div className="mb-6">
-            <h3 className="text-2xl font-semibold mb-4">Create a New Post</h3>
+      const renderLoginPage = () => (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+          <div className="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md transform scale-100 transition-transform duration-300">
+            <div className="text-center mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-key-square text-indigo-500 mx-auto mb-2"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><circle cx="12" cy="12" r="2"/><path d="m15 5 2.5 2.5"/><path d="m17.5 10.5-1.5 1.5"/><path d="m20 8 1 1"/></svg>
+              <h2 className="text-3xl font-bold text-gray-800">Welcome Back!</h2>
+              <p className="text-gray-500">Sign in to your account to continue.</p>
+            </div>
             <input
               type="text"
-              placeholder="Post Title"
+              placeholder="Account ID (e.g., Ed, As, Ot or admin)"
               className="app-input"
-              value={postTitle}
-              onChange={(e) => setPostTitle(e.target.value)}
+              value={loginId}
+              onChange={(e) => setLoginId(e.target.value)}
             />
-            <textarea
-              placeholder="What's the news?"
-              className="app-input h-32"
-              value={postContent}
-              onChange={(e) => setPostContent(e.target.value)}
-            ></textarea>
-            <button onClick={handlePost} className="app-button-primary">Post News</button>
+            <input
+              type="password"
+              placeholder="Password (FARHAN for admin)"
+              className="app-input"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+            />
+            <button onClick={handleLogin} className="app-button-primary mb-4">
+              Login
+            </button>
+            <p className="mt-4 text-center text-sm text-gray-600">
+              Don't have an account?
+              <a href="#" onClick={() => setCurrentPage('register')} className="text-indigo-600 font-medium hover:underline ml-1">
+                Register here
+              </a>
+            </p>
+            <button onClick={() => setCurrentPage('landing')} className="mt-4 w-full bg-gray-200 text-gray-800 font-semibold py-3 rounded-lg hover:bg-gray-300 transition duration-300">
+              Back to Home
+            </button>
           </div>
         </div>
       );
 
+      const renderRegisterPage = () => (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
+          <div className="bg-white p-10 rounded-xl shadow-2xl w-full max-w-md transform scale-100 transition-transform duration-300">
+            <div className="text-center mb-6">
+              <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user-plus text-green-500 mx-auto mb-2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>
+              <h2 className="text-3xl font-bold text-gray-800">School Registration</h2>
+              <p className="text-gray-500">Create your school's unique account.</p>
+            </div>
+            <input
+              type="text"
+              placeholder="School ID (e.g., Ed, As, Ot)"
+              className="app-input"
+              value={registerSchoolId}
+              onChange={(e) => setRegisterSchoolId(e.target.value)}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              className="app-input"
+              value={registerPassword}
+              onChange={(e) => setRegisterPassword(e.target.value)}
+            />
+            <button onClick={handleRegister} className="app-button-secondary mb-4">
+              Register School Account
+            </button>
+            <p className="mt-4 text-center text-sm text-gray-600">
+              Already have an account?
+              <a href="#" onClick={() => setCurrentPage('login')} className="text-green-600 font-medium hover:underline ml-1">
+                Login here
+              </a>
+            </p>
+            <button onClick={() => setCurrentPage('landing')} className="mt-4 w-full bg-gray-200 text-gray-800 font-semibold py-3 rounded-lg hover:bg-gray-300 transition duration-300">
+              Back to Home
+            </button>
+          </div>
+        </div>
+      );
+
+      const renderSchoolDashboard = () => (
+        <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
+          <header className="w-full max-w-4xl flex justify-between items-center py-4 px-6 bg-white rounded-xl shadow-xl mt-4">
+            <div className="flex items-center space-x-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-graduation-cap text-indigo-500"><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.084a1 1 0 0 0-.019 1.838l8.59 3.908a2 2 0 0 0 1.66 0z"/><path d="M10.15 14.887a2 2 0 0 0 1.66 0l8.59-3.908"/><path d="M19.24 17.924a2 2 0 0 0 1.25-2.736L16.48 11.2a2 2 0 0 0-1.66 0L2.6 15.084a1 1 0 0 0-.019 1.838l3.77 1.716"/><path d="M13.25 18.06a2 2 0 0 0 1.66 0l5.85-2.66"/></svg>
+              <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+                <span className="text-gray-600 font-medium">Logged in as <span className="font-bold text-indigo-600">{schoolId}</span></span>
+                <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors duration-300">Logout</button>
+            </div>
+          </header>
+
+          <main className="w-full max-w-4xl mt-8">
+            <div className="mb-8 bg-white p-8 rounded-xl shadow-xl border-t-4 border-indigo-500">
+              <h3 className="text-2xl font-semibold text-gray-800 mb-4">Create a New Post</h3>
+              <input
+                type="text"
+                placeholder="Post Title (e.g., Summer Camp Announcement)"
+                className="app-input"
+                value={postTitle}
+                onChange={(e) => setPostTitle(e.target.value)}
+              />
+              <textarea
+                placeholder="What's the news?"
+                className="app-input h-32"
+                value={postContent}
+                onChange={(e) => setPostContent(e.target.value)}
+              ></textarea>
+              <button onClick={handlePost} className="app-button-primary">
+                Publish Post
+              </button>
+            </div>
+
+            <div className="space-y-8">
+              <h3 className="text-3xl font-bold text-gray-800 text-center">Recent Posts</h3>
+              {schoolPosts.length > 0 ? (
+                schoolPosts.map(post => (
+                  <div key={post.id} className="post-card">
+                    <div className="flex items-center mb-4">
+                      <img src="https://placehold.co/48x48/6366F1/fff?text=S" alt="School Icon" className="rounded-full mr-4 shadow-md" />
+                      <div>
+                        <p className="font-bold text-lg text-indigo-600">{post.schoolId}</p>
+                        <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{post.title}</h3>
+                    <p className="text-gray-700 mb-4">{post.content}</p>
+                    <img src={post.imageUrl} alt="Post Image" className="post-image" />
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-gray-500">You haven't posted anything yet.</p>
+              )}
+            </div>
+          </main>
+        </div>
+      );
+      
+      const renderAdminDashboard = () => (
+        <div className="min-h-screen bg-gray-100 p-8 flex flex-col items-center">
+          <header className="w-full max-w-4xl flex justify-between items-center py-4 px-6 bg-white rounded-xl shadow-xl mt-4">
+            <div className="flex items-center space-x-3">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-shield-half text-red-500"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M12 22V3"/></svg>
+              <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+                <span className="text-gray-600 font-medium">Logged in as <span className="font-bold text-red-600">Admin</span></span>
+                <button onClick={handleLogout} className="bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-600 transition-colors duration-300">Logout</button>
+            </div>
+          </header>
+
+          <main className="w-full max-w-4xl mt-8">
+            <h3 className="text-3xl font-bold text-gray-800 text-center mb-8">All School Posts</h3>
+            <div className="space-y-8">
+              {adminPosts.length > 0 ? (
+                adminPosts.map(post => (
+                  <div key={post.id} className="post-card">
+                    <div className="flex items-center mb-4">
+                      <img src="https://placehold.co/48x48/6366F1/fff?text=S" alt="School Icon" className="rounded-full mr-4 shadow-md" />
+                      <div>
+                        <p className="font-bold text-lg text-indigo-600">Post from {post.schoolId}</p>
+                        <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">{post.title}</h3>
+                    <p className="text-gray-700 mb-4">{post.content}</p>
+                    <img src={post.imageUrl} alt="Post Image" className="post-image mb-4" />
+                    <div className="flex justify-between flex-col md:flex-row gap-2">
+                      <button
+                        onClick={() => saveImage(post.imageUrl, `${post.schoolId}-${post.title}.png`)}
+                        className="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300 text-sm"
+                      >
+                        Save to Phone
+                      </button>
+                      <button
+                        onClick={() => shareOnWhatsApp(`Check out this post from ${post.schoolId}:\n\n${post.title}\n${post.content}`)}
+                        className="bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300 text-sm"
+                      >
+                        Share on WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-gray-500">No posts from schools yet.</p>
+              )}
+            </div>
+          </main>
+        </div>
+      );
+
+      const renderLoadingState = () => (
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+          <svg className="animate-spin h-10 w-10 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p className="mt-4 text-gray-600">Loading app...</p>
+        </div>
+      );
+
       return (
-        <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-          {currentPage === 'login' && renderLoginPage()}
-          {currentPage === 'school-dashboard' && renderSchoolDashboard()}
+        <div className="min-h-screen bg-gray-100">
+          {isLoading ? renderLoadingState() : (
+            <>
+              {currentPage === 'landing' && renderLandingPage()}
+              {currentPage === 'login' && renderLoginPage()}
+              {currentPage === 'register' && renderRegisterPage()}
+              {currentPage === 'school-dashboard' && renderSchoolDashboard()}
+              {currentPage === 'admin-dashboard' && renderAdminDashboard()}
+            </>
+          )}
+          {showModal && <Modal {...modalContent} onClose={closeModal} />}
         </div>
       );
     };
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<App />);
+    
+    // Initial render
+    window.onload = () => {
+      ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    };
   </script>
 </body>
-
 </html>
-
