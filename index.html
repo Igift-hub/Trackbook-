@@ -1,314 +1,301 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML/JS To-Do List</title>
-    <!-- We're using Tailwind CSS for easy and beautiful styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Import the Firebase SDKs -->
-    <script type="module">
-        // Import the necessary Firebase modules.
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithCustomToken, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, serverTimestamp, orderBy, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global variables to hold our Firebase instances.
-        let app, db, auth;
-        // User ID variable to manage user-specific data.
-        let userId = null;
-
-        // Function to initialize Firebase and set up listeners.
-        const initFirebase = async () => {
-            try {
-                // Get the Firebase configuration from the Canvas environment.
-                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-                const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-                // Initialize the app.
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-
-                // Wait for the authentication state to be ready.
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        // User is signed in.
-                        userId = user.uid;
-                        // Start the Firestore listener for to-do items.
-                        setupFirestoreListener();
-                        // Display the user ID on the page.
-                        document.getElementById('user-id').textContent = userId;
-                    } else {
-                        // User is signed out, try to sign in anonymously or with custom token.
-                        if (initialAuthToken) {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                        } else {
-                            await signInAnonymously(auth);
-                        }
-                    }
-                });
-            } catch (error) {
-                console.error("Firebase initialization error:", error);
-            }
-        };
-
-        // Function to set up the real-time listener for Firestore data.
-        const setupFirestoreListener = () => {
-            if (!db || !userId) {
-                console.error("Database or user ID not available.");
-                return;
-            }
-
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const todosCollectionPath = `/artifacts/${appId}/users/${userId}/todos`;
-            const todosCollection = collection(db, todosCollectionPath);
-            const q = query(todosCollection);
-
-            // onSnapshot listens for real-time changes.
-            onSnapshot(q, (snapshot) => {
-                const todos = [];
-                snapshot.forEach(doc => {
-                    todos.push({ id: doc.id, ...doc.data() });
-                });
-                // Sort todos by creation timestamp to maintain order.
-                todos.sort((a, b) => a.createdAt.seconds - b.createdAt.seconds);
-                // Render the updated list of todos.
-                renderTodos(todos);
-            }, (error) => {
-                console.error("Error getting documents:", error);
-            });
-        };
-
-        // Renders the to-do list on the page.
-        const renderTodos = (todos) => {
-            const listContainer = document.getElementById('todo-list-container');
-            listContainer.innerHTML = ''; // Clear the existing list.
-
-            if (todos.length === 0) {
-                listContainer.innerHTML = `
-                    <p class="text-center text-gray-500 italic mt-4">
-                        Your to-do list is empty! Add a new task above.
-                    </p>
-                `;
-                return;
-            }
-
-            todos.forEach(todo => {
-                const todoItem = document.createElement('div');
-                todoItem.className = 'flex items-center justify-between bg-white p-4 rounded-xl shadow transition-all duration-200 hover:bg-gray-100';
-                todoItem.dataset.id = todo.id;
-                todoItem.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <input type="checkbox" ${todo.completed ? 'checked' : ''} class="task-checkbox w-5 h-5 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 transition-colors cursor-pointer" />
-                        <span class="task-text text-black text-base md:text-lg ${todo.completed ? 'line-through text-gray-500' : ''} transition-colors duration-200">
-                            ${todo.text}
-                        </span>
-                        <input type="text" class="edit-input hidden flex-grow p-2 text-sm text-black bg-white rounded-lg border border-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-500" value="${todo.text}" />
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <button class="edit-btn text-gray-500 hover:text-blue-500 transition-colors duration-200" aria-label="Edit todo">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zm-3.832 7.078l-3.32 3.32a1 1 0 01-.409.288l-3.23 1.077a.5.5 0 01-.62-.62l1.076-3.23a1 1 0 01.288-.409l3.32-3.32 2.828 2.828z" />
-                            </svg>
-                        </button>
-                        <button class="save-btn hidden p-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-                            Save
-                        </button>
-                        <button class="cancel-btn hidden p-2 text-sm font-medium text-white bg-gray-500 rounded-lg hover:bg-gray-600 transition-colors">
-                            Cancel
-                        </button>
-                        <button class="delete-btn text-gray-500 hover:text-blue-500 transition-colors duration-200" aria-label="Delete todo">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                <path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clip-rule="evenodd" />
-                            </svg>
-                        </button>
-                    </div>
-                `;
-                listContainer.appendChild(todoItem);
-            });
-        };
-        
-        // Adds a new to-do item to Firestore.
-        const addTodo = async (text) => {
-            if (!db || !userId) return;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const todosCollectionPath = `/artifacts/${appId}/users/${userId}/todos`;
-
-            try {
-                await addDoc(collection(db, todosCollectionPath), {
-                    text: text,
-                    completed: false,
-                    createdAt: serverTimestamp(),
-                });
-            } catch (e) {
-                console.error("Error adding document: ", e);
-            }
-        };
-
-        // Toggles the 'completed' status of a to-do.
-        const toggleComplete = async (id, completed) => {
-            if (!db || !userId) return;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const todoDocRef = doc(db, `/artifacts/${appId}/users/${userId}/todos`, id);
-
-            try {
-                await updateDoc(todoDocRef, {
-                    completed: !completed
-                });
-            } catch (e) {
-                console.error("Error updating document: ", e);
-            }
-        };
-
-        // Deletes a to-do item.
-        const deleteTodo = async (id) => {
-            if (!db || !userId) return;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const todoDocRef = doc(db, `/artifacts/${appId}/users/${userId}/todos`, id);
-
-            try {
-                await deleteDoc(todoDocRef);
-            } catch (e) {
-                console.error("Error deleting document: ", e);
-            }
-        };
-        
-        // Handles the edit process.
-        const handleEdit = async (id, newText) => {
-             if (!db || !userId) return;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-            const todoDocRef = doc(db, `/artifacts/${appId}/users/${userId}/todos`, id);
-            try {
-                await updateDoc(todoDocRef, {
-                    text: newText,
-                });
-            } catch (e) {
-                console.error("Error updating document:", e);
-            }
-        };
-        
-        // Event listeners for the form and the to-do list.
-        window.onload = () => {
-            initFirebase();
-
-            const form = document.getElementById('todo-form');
-            const input = document.getElementById('todo-input');
-            const listContainer = document.getElementById('todo-list-container');
-
-            form.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const text = input.value.trim();
-                if (text !== '') {
-                    addTodo(text);
-                    input.value = '';
-                }
-            });
-
-            listContainer.addEventListener('click', async (e) => {
-                const todoItem = e.target.closest('div[data-id]');
-                if (!todoItem) return;
-                const id = todoItem.dataset.id;
-
-                if (e.target.closest('.task-checkbox')) {
-                    const isChecked = e.target.checked;
-                    await toggleComplete(id, !isChecked);
-                }
-
-                if (e.target.closest('.delete-btn')) {
-                    await deleteTodo(id);
-                }
-                
-                if (e.target.closest('.edit-btn')) {
-                    const textSpan = todoItem.querySelector('.task-text');
-                    const editInput = todoItem.querySelector('.edit-input');
-                    const editBtn = todoItem.querySelector('.edit-btn');
-                    const deleteBtn = todoItem.querySelector('.delete-btn');
-                    const saveBtn = todoItem.querySelector('.save-btn');
-                    const cancelBtn = todoItem.querySelector('.cancel-btn');
-
-                    textSpan.classList.add('hidden');
-                    editInput.classList.remove('hidden');
-                    editInput.focus();
-                    editBtn.classList.add('hidden');
-                    deleteBtn.classList.add('hidden');
-                    saveBtn.classList.remove('hidden');
-                    cancelBtn.classList.remove('hidden');
-                }
-                
-                if (e.target.closest('.save-btn')) {
-                    const editInput = todoItem.querySelector('.edit-input');
-                    const newText = editInput.value.trim();
-                    if (newText !== '') {
-                         await handleEdit(id, newText);
-                    }
-                    
-                    const textSpan = todoItem.querySelector('.task-text');
-                    const editBtn = todoItem.querySelector('.edit-btn');
-                    const deleteBtn = todoItem.querySelector('.delete-btn');
-                    const saveBtn = todoItem.querySelector('.save-btn');
-                    const cancelBtn = todoItem.querySelector('.cancel-btn');
-                    
-                    textSpan.classList.remove('hidden');
-                    editInput.classList.add('hidden');
-                    editBtn.classList.remove('hidden');
-                    deleteBtn.classList.remove('hidden');
-                    saveBtn.classList.add('hidden');
-                    cancelBtn.classList.add('hidden');
-                }
-
-                if (e.target.closest('.cancel-btn')) {
-                    const textSpan = todoItem.querySelector('.task-text');
-                    const editInput = todoItem.querySelector('.edit-input');
-                    const editBtn = todoItem.querySelector('.edit-btn');
-                    const deleteBtn = todoItem.querySelector('.delete-btn');
-                    const saveBtn = todoItem.querySelector('.save-btn');
-                    const cancelBtn = todoItem.querySelector('.cancel-btn');
-
-                    textSpan.classList.remove('hidden');
-                    editInput.classList.add('hidden');
-                    editBtn.classList.remove('hidden');
-                    deleteBtn.classList.remove('hidden');
-                    saveBtn.classList.add('hidden');
-                    cancelBtn.classList.add('hidden');
-                }
-            });
-        };
-    </script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>School App</title>
+  <!--
+    NOTE: As per the user's feedback, the Tailwind CDN is used here for simplicity.
+    For a production application, it should be installed as a PostCSS plugin.
+    More info here: https://tailwindcss.com/docs/installation
+  -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!--
+    This script loads the bcrypt library globally.
+    It must be loaded before the main script that uses it.
+  -->
+  <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.js"></script>
+  <style>
+    /*
+      This is the CSS from the previous version, now inline in the HTML.
+      It uses Tailwind CSS utility classes to style the app's components.
+    */
+    .app-input {
+      @apply w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500;
+    }
+    .app-button-primary {
+      @apply w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition duration-300;
+    }
+    .app-button-secondary {
+      @apply w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition duration-300;
+    }
+    .app-button-danger {
+      @apply w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 transition duration-300;
+    }
+    .app-message {
+      @apply mt-4 text-center text-sm;
+    }
+  </style>
 </head>
-<body class="bg-white font-sans text-black">
-    <div class="min-h-screen flex items-center justify-center p-4 md:p-8">
-        <div class="w-full max-w-lg bg-white rounded-2xl shadow-xl p-6 md:p-8">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-center text-blue-600 mb-6 md:mb-8 tracking-tight">
-                To-Do List 📝
-            </h1>
-            <!-- User ID is displayed here for multi-user context. -->
-            <p class="text-sm text-gray-500 text-center mb-4">
-                User ID: <span id="user-id" class="font-mono text-xs break-all"></span>
-            </p>
-            
-            <!-- Form for adding new to-dos -->
-            <form id="todo-form" class="flex gap-2 md:gap-4 mb-6">
-                <input
-                    id="todo-input"
-                    type="text"
-                    placeholder="Add a new task..."
-                    class="flex-grow p-3 md:p-4 text-sm md:text-base text-black bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200"
-                />
-                <button
-                    type="submit"
-                    class="p-3 md:p-4 bg-blue-600 text-white rounded-xl shadow-lg hover:bg-blue-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
-                >
-                    Add
-                </button>
-            </form>
+<body>
 
-            <!-- Container for the to-do list items -->
-            <div id="todo-list-container" class="space-y-3">
-                <!-- To-do items will be dynamically added here by JavaScript -->
-            </div>
-        </div>
+  <div id="app-container" class="min-h-screen flex items-center justify-center p-4">
+
+    <!-- Login Page -->
+    <div id="login-page" class="app-page bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+      <h2 class="text-3xl font-bold text-gray-800 text-center mb-6">School Login</h2>
+      <input type="text" id="login-school-id" placeholder="School ID" class="app-input" />
+      <input type="password" id="login-password" placeholder="Password" class="app-input" />
+      <button id="login-btn" class="app-button-primary">Login</button>
+      <p class="mt-4 text-center text-sm text-gray-600">
+        Don't have an account?
+        <a href="#" id="go-to-register" class="text-indigo-600 font-medium hover:underline">Register here</a>
+      </p>
+      <p id="login-message" class="app-message text-red-500"></p>
     </div>
+
+    <!-- Registration Page -->
+    <div id="register-page" class="app-page bg-white p-8 rounded-lg shadow-xl w-full max-w-md hidden">
+      <h2 class="text-3xl font-bold text-gray-800 text-center mb-6">School Registration</h2>
+      <input type="text" id="register-school-id" placeholder="School ID" class="app-input" />
+      <input type="password" id="register-password" placeholder="Password" class="app-input" />
+      <button id="register-btn" class="app-button-secondary">Register</button>
+      <p class="mt-4 text-center text-sm text-gray-600">
+        Already have an account?
+        <a href="#" id="go-to-login" class="text-green-600 font-medium hover:underline">Login here</a>
+      </p>
+      <p id="register-message" class="app-message text-red-500"></p>
+    </div>
+
+    <!-- Dashboard Page -->
+    <div id="dashboard-page" class="app-page bg-indigo-500 text-white p-8 rounded-lg shadow-xl w-full max-w-md hidden">
+      <h2 class="text-3xl font-bold text-center mb-4">Welcome to the Dashboard!</h2>
+      <p class="text-center text-gray-600 mb-6">
+        This is the collaboration space. You are successfully logged in.
+      </p>
+      <div class="flex flex-col items-center mb-6">
+        <p class="font-semibold text-lg text-gray-700">Logged in as School:</p>
+        <p id="dashboard-school-id" class="text-xl font-bold text-indigo-600 mt-1"></p>
+      </div>
+      <p id="dashboard-user-id" class="text-sm text-center text-gray-500 mb-6"></p>
+      <button id="logout-btn" class="app-button-danger">Logout</button>
+    </div>
+
+    <!-- Message Box -->
+    <div id="message-box" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+      <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm">
+        <h3 id="message-box-title" class="text-xl font-bold mb-2"></h3>
+        <p id="message-box-text" class="text-gray-700 mb-4"></p>
+        <button id="message-box-close" class="app-button-primary w-full">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!--
+    This is the main application script.
+    The `type="module"` attribute is crucial for the `import` statements to work.
+  -->
+  <script type="module">
+    // Firebase SDK imports
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    // Global variables provided by the Canvas environment
+    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
+
+    // DOM elements
+    const loginPage = document.getElementById('login-page');
+    const registerPage = document.getElementById('register-page');
+    const dashboardPage = document.getElementById('dashboard-page');
+    const loginBtn = document.getElementById('login-btn');
+    const registerBtn = document.getElementById('register-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+    const goToRegisterLink = document.getElementById('go-to-register');
+    const goToLoginLink = document.getElementById('go-to-login');
+    const loginSchoolIdInput = document.getElementById('login-school-id');
+    const loginPasswordInput = document.getElementById('login-password');
+    const registerSchoolIdInput = document.getElementById('register-school-id');
+    const registerPasswordInput = document.getElementById('register-password');
+    const loginMessage = document.getElementById('login-message');
+    const registerMessage = document.getElementById('register-message');
+    const dashboardSchoolId = document.getElementById('dashboard-school-id');
+    const dashboardUserId = document.getElementById('dashboard-user-id');
+    const messageBox = document.getElementById('message-box');
+    const messageBoxTitle = document.getElementById('message-box-title');
+    const messageBoxText = document.getElementById('message-box-text');
+    const messageBoxCloseBtn = document.getElementById('message-box-close');
+
+    // Firebase services
+    let db, auth;
+    let currentUser = null;
+
+    // Helper function to show a custom message box instead of alert()
+    const showMessage = (title, text) => {
+      messageBoxTitle.textContent = title;
+      messageBoxText.textContent = text;
+      messageBox.style.display = 'flex';
+    };
+
+    const hideMessageBox = () => {
+      messageBox.style.display = 'none';
+    };
+
+    messageBoxCloseBtn.addEventListener('click', hideMessageBox);
+
+    // Function to handle page switching
+    const showPage = (pageName) => {
+      loginPage.style.display = 'none';
+      registerPage.style.display = 'none';
+      dashboardPage.style.display = 'none';
+
+      switch (pageName) {
+        case 'login':
+          loginPage.style.display = 'block';
+          break;
+        case 'register':
+          registerPage.style.display = 'block';
+          break;
+        case 'dashboard':
+          dashboardPage.style.display = 'block';
+          break;
+      }
+    };
+
+    // Function to handle registration
+    const handleRegister = async () => {
+      const schoolId = registerSchoolIdInput.value;
+      const password = registerPasswordInput.value;
+
+      if (!schoolId || !password) {
+        showMessage('Error', 'School ID and password are required.');
+        return;
+      }
+
+      try {
+        const docRef = doc(db, `/artifacts/${appId}/public/data/schools`, schoolId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          showMessage('Error', 'School ID already exists. Please choose another.');
+        } else {
+          const saltRounds = 10;
+          const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+          await setDoc(docRef, {
+            schoolId,
+            passwordHash: hashedPassword,
+          });
+          showMessage('Success', 'Registration successful! Please log in.');
+          showPage('login');
+          registerSchoolIdInput.value = '';
+          registerPasswordInput.value = '';
+        }
+      } catch (error) {
+        console.error("Registration failed:", error);
+        showMessage('Error', `Registration failed: ${error.message}`);
+      }
+    };
+
+    // Function to handle login
+    const handleLogin = async () => {
+      const schoolId = loginSchoolIdInput.value;
+      const password = loginPasswordInput.value;
+
+      if (!schoolId || !password) {
+        showMessage('Error', 'School ID and password are required.');
+        return;
+      }
+
+      try {
+        const docRef = doc(db, `/artifacts/${appId}/public/data/schools`, schoolId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const { passwordHash } = docSnap.data();
+          const match = await bcrypt.compare(password, passwordHash);
+
+          if (match) {
+            showMessage('Success', 'Login successful!');
+            dashboardSchoolId.textContent = schoolId;
+            dashboardUserId.textContent = `Current User ID: ${currentUser?.uid || 'N/A'}`;
+            showPage('dashboard');
+            loginSchoolIdInput.value = '';
+            loginPasswordInput.value = '';
+          } else {
+            showMessage('Error', 'Invalid password.');
+          }
+        } else {
+          showMessage('Error', 'School ID not found.');
+        }
+      } catch (error) {
+        console.error("Login failed:", error);
+        showMessage('Error', `Login failed: ${error.message}`);
+      }
+    };
+
+    // Function to handle logout
+    const handleLogout = async () => {
+      try {
+        await signOut(auth);
+        showPage('login');
+        showMessage('Logged Out', 'You have been successfully logged out.');
+      } catch (error) {
+        console.error("Logout failed:", error);
+        showMessage('Error', `Logout failed: ${error.message}`);
+      }
+    };
+
+    // Event listeners for page navigation and actions
+    goToRegisterLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      showPage('register');
+      registerMessage.textContent = '';
+    });
+
+    goToLoginLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      showPage('login');
+      loginMessage.textContent = '';
+    });
+
+    loginBtn.addEventListener('click', handleLogin);
+    registerBtn.addEventListener('click', handleRegister);
+    logoutBtn.addEventListener('click', handleLogout);
+
+    // Initialize the app on window load
+    window.onload = async () => {
+      try {
+        const app = initializeApp(firebaseConfig);
+        db = getFirestore(app);
+        auth = getAuth(app);
+
+        // Set up auth state change listener
+        onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            currentUser = user;
+            // A logged-in user exists, show the dashboard or login page
+            showPage('login');
+          } else {
+            currentUser = null;
+            showPage('login');
+          }
+        });
+
+        if (initialAuthToken) {
+            await signInWithCustomToken(auth, initialAuthToken);
+        } else {
+            await signInAnonymously(auth);
+        }
+
+      } catch (error) {
+        console.error("Firebase initialization failed:", error);
+        showMessage('Error', "Failed to initialize the app. Please try again later.");
+      }
+    };
+  </script>
 </body>
-  </html>
-      
+            </html>
+            
