@@ -1,301 +1,437 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>School App</title>
-  <!--
-    NOTE: As per the user's feedback, the Tailwind CDN is used here for simplicity.
-    For a production application, it should be installed as a PostCSS plugin.
-    More info here: https://tailwindcss.com/docs/installation
-  -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!--
-    This script loads the bcrypt library globally.
-    It must be loaded before the main script that uses it.
-  -->
-  <script src="https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.js"></script>
-  <style>
-    /*
-      This is the CSS from the previous version, now inline in the HTML.
-      It uses Tailwind CSS utility classes to style the app's components.
-    */
-    .app-input {
-      @apply w-full px-4 py-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500;
-    }
-    .app-button-primary {
-      @apply w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition duration-300;
-    }
-    .app-button-secondary {
-      @apply w-full bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition duration-300;
-    }
-    .app-button-danger {
-      @apply w-full bg-red-500 text-white font-semibold py-3 rounded-lg hover:bg-red-600 transition duration-300;
-    }
-    .app-message {
-      @apply mt-4 text-center text-sm;
-    }
-  </style>
-</head>
-<body>
+import React, { useState, useEffect } from 'react';
+import { initializeApp } from 'firebase/app';
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, query, where, getDocs } from 'firebase/firestore';
+import { v4 as uuidv4 } from 'uuid';
+import bcrypt from 'https://cdn.jsdelivr.net/npm/bcryptjs@2.4.3/dist/bcrypt.js';
 
-  <div id="app-container" class="min-h-screen flex items-center justify-center p-4">
+// Global variables from the Canvas environment
+const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
 
-    <!-- Login Page -->
-    <div id="login-page" class="app-page bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
-      <h2 class="text-3xl font-bold text-gray-800 text-center mb-6">School Login</h2>
-      <input type="text" id="login-school-id" placeholder="School ID" class="app-input" />
-      <input type="password" id="login-password" placeholder="Password" class="app-input" />
-      <button id="login-btn" class="app-button-primary">Login</button>
-      <p class="mt-4 text-center text-sm text-gray-600">
-        Don't have an account?
-        <a href="#" id="go-to-register" class="text-indigo-600 font-medium hover:underline">Register here</a>
-      </p>
-      <p id="login-message" class="app-message text-red-500"></p>
-    </div>
+// Hardcoded Admin Credentials
+const ADMIN_ID = 'admin';
+const ADMIN_PASSWORD = 'FARHAN';
 
-    <!-- Registration Page -->
-    <div id="register-page" class="app-page bg-white p-8 rounded-lg shadow-xl w-full max-w-md hidden">
-      <h2 class="text-3xl font-bold text-gray-800 text-center mb-6">School Registration</h2>
-      <input type="text" id="register-school-id" placeholder="School ID" class="app-input" />
-      <input type="password" id="register-password" placeholder="Password" class="app-input" />
-      <button id="register-btn" class="app-button-secondary">Register</button>
-      <p class="mt-4 text-center text-sm text-gray-600">
-        Already have an account?
-        <a href="#" id="go-to-login" class="text-green-600 font-medium hover:underline">Login here</a>
-      </p>
-      <p id="register-message" class="app-message text-red-500"></p>
-    </div>
+// Helper function to handle sharing on WhatsApp
+const shareOnWhatsApp = (text) => {
+  const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+  window.open(whatsappUrl, '_blank');
+};
 
-    <!-- Dashboard Page -->
-    <div id="dashboard-page" class="app-page bg-indigo-500 text-white p-8 rounded-lg shadow-xl w-full max-w-md hidden">
-      <h2 class="text-3xl font-bold text-center mb-4">Welcome to the Dashboard!</h2>
-      <p class="text-center text-gray-600 mb-6">
-        This is the collaboration space. You are successfully logged in.
-      </p>
-      <div class="flex flex-col items-center mb-6">
-        <p class="font-semibold text-lg text-gray-700">Logged in as School:</p>
-        <p id="dashboard-school-id" class="text-xl font-bold text-indigo-600 mt-1"></p>
-      </div>
-      <p id="dashboard-user-id" class="text-sm text-center text-gray-500 mb-6"></p>
-      <button id="logout-btn" class="app-button-danger">Logout</button>
-    </div>
+// Helper function to handle saving an image
+const saveImage = (imageUrl, fileName) => {
+  const link = document.createElement('a');
+  link.href = imageUrl;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
 
-    <!-- Message Box -->
-    <div id="message-box" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
-      <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm">
-        <h3 id="message-box-title" class="text-xl font-bold mb-2"></h3>
-        <p id="message-box-text" class="text-gray-700 mb-4"></p>
-        <button id="message-box-close" class="app-button-primary w-full">OK</button>
-      </div>
+// Custom Modal component
+const Modal = ({ title, text, onClose }) => (
+  <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+    <div className="bg-white p-6 rounded-lg shadow-2xl w-full max-w-sm">
+      <h3 className="text-xl font-bold mb-2">{title}</h3>
+      <p className="text-gray-700 mb-4">{text}</p>
+      <button onClick={onClose} className="bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition duration-300 w-full">
+        OK
+      </button>
     </div>
   </div>
+);
 
-  <!--
-    This is the main application script.
-    The `type="module"` attribute is crucial for the `import` statements to work.
-  -->
-  <script type="module">
-    // Firebase SDK imports
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+// Main App component
+const App = () => {
+  const [currentPage, setCurrentPage] = useState('login');
+  const [isAuthReady, setIsAuthReady] = useState(false);
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(''); // 'school' or 'admin'
+  const [schoolId, setSchoolId] = useState('');
+  const [loginId, setLoginId] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [registerSchoolId, setRegisterSchoolId] = useState('');
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [postTitle, setPostTitle] = useState('');
+  const [postContent, setPostContent] = useState('');
+  const [adminPosts, setAdminPosts] = useState([]);
+  const [schoolPosts, setSchoolPosts] = useState([]);
+  const [showModal, setShowModal] = useState(false);
+  const [modalContent, setModalContent] = useState({ title: '', text: '' });
+  const [db, setDb] = useState(null);
+  const [auth, setAuth] = useState(null);
 
-    // Global variables provided by the Canvas environment
-    const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : '';
+  const showMessage = (title, text) => {
+    setModalContent({ title, text });
+    setShowModal(true);
+  };
 
-    // DOM elements
-    const loginPage = document.getElementById('login-page');
-    const registerPage = document.getElementById('register-page');
-    const dashboardPage = document.getElementById('dashboard-page');
-    const loginBtn = document.getElementById('login-btn');
-    const registerBtn = document.getElementById('register-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    const goToRegisterLink = document.getElementById('go-to-register');
-    const goToLoginLink = document.getElementById('go-to-login');
-    const loginSchoolIdInput = document.getElementById('login-school-id');
-    const loginPasswordInput = document.getElementById('login-password');
-    const registerSchoolIdInput = document.getElementById('register-school-id');
-    const registerPasswordInput = document.getElementById('register-password');
-    const loginMessage = document.getElementById('login-message');
-    const registerMessage = document.getElementById('register-message');
-    const dashboardSchoolId = document.getElementById('dashboard-school-id');
-    const dashboardUserId = document.getElementById('dashboard-user-id');
-    const messageBox = document.getElementById('message-box');
-    const messageBoxTitle = document.getElementById('message-box-title');
-    const messageBoxText = document.getElementById('message-box-text');
-    const messageBoxCloseBtn = document.getElementById('message-box-close');
+  const closeModal = () => {
+    setShowModal(false);
+  };
 
-    // Firebase services
-    let db, auth;
-    let currentUser = null;
-
-    // Helper function to show a custom message box instead of alert()
-    const showMessage = (title, text) => {
-      messageBoxTitle.textContent = title;
-      messageBoxText.textContent = text;
-      messageBox.style.display = 'flex';
-    };
-
-    const hideMessageBox = () => {
-      messageBox.style.display = 'none';
-    };
-
-    messageBoxCloseBtn.addEventListener('click', hideMessageBox);
-
-    // Function to handle page switching
-    const showPage = (pageName) => {
-      loginPage.style.display = 'none';
-      registerPage.style.display = 'none';
-      dashboardPage.style.display = 'none';
-
-      switch (pageName) {
-        case 'login':
-          loginPage.style.display = 'block';
-          break;
-        case 'register':
-          registerPage.style.display = 'block';
-          break;
-        case 'dashboard':
-          dashboardPage.style.display = 'block';
-          break;
-      }
-    };
-
-    // Function to handle registration
-    const handleRegister = async () => {
-      const schoolId = registerSchoolIdInput.value;
-      const password = registerPasswordInput.value;
-
-      if (!schoolId || !password) {
-        showMessage('Error', 'School ID and password are required.');
-        return;
-      }
-
-      try {
-        const docRef = doc(db, `/artifacts/${appId}/public/data/schools`, schoolId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          showMessage('Error', 'School ID already exists. Please choose another.');
-        } else {
-          const saltRounds = 10;
-          const hashedPassword = await bcrypt.hash(password, saltRounds);
-
-          await setDoc(docRef, {
-            schoolId,
-            passwordHash: hashedPassword,
-          });
-          showMessage('Success', 'Registration successful! Please log in.');
-          showPage('login');
-          registerSchoolIdInput.value = '';
-          registerPasswordInput.value = '';
-        }
-      } catch (error) {
-        console.error("Registration failed:", error);
-        showMessage('Error', `Registration failed: ${error.message}`);
-      }
-    };
-
-    // Function to handle login
-    const handleLogin = async () => {
-      const schoolId = loginSchoolIdInput.value;
-      const password = loginPasswordInput.value;
-
-      if (!schoolId || !password) {
-        showMessage('Error', 'School ID and password are required.');
-        return;
-      }
-
-      try {
-        const docRef = doc(db, `/artifacts/${appId}/public/data/schools`, schoolId);
-        const docSnap = await getDoc(docRef);
-
-        if (docSnap.exists()) {
-          const { passwordHash } = docSnap.data();
-          const match = await bcrypt.compare(password, passwordHash);
-
-          if (match) {
-            showMessage('Success', 'Login successful!');
-            dashboardSchoolId.textContent = schoolId;
-            dashboardUserId.textContent = `Current User ID: ${currentUser?.uid || 'N/A'}`;
-            showPage('dashboard');
-            loginSchoolIdInput.value = '';
-            loginPasswordInput.value = '';
-          } else {
-            showMessage('Error', 'Invalid password.');
-          }
-        } else {
-          showMessage('Error', 'School ID not found.');
-        }
-      } catch (error) {
-        console.error("Login failed:", error);
-        showMessage('Error', `Login failed: ${error.message}`);
-      }
-    };
-
-    // Function to handle logout
-    const handleLogout = async () => {
-      try {
-        await signOut(auth);
-        showPage('login');
-        showMessage('Logged Out', 'You have been successfully logged out.');
-      } catch (error) {
-        console.error("Logout failed:", error);
-        showMessage('Error', `Logout failed: ${error.message}`);
-      }
-    };
-
-    // Event listeners for page navigation and actions
-    goToRegisterLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      showPage('register');
-      registerMessage.textContent = '';
-    });
-
-    goToLoginLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      showPage('login');
-      loginMessage.textContent = '';
-    });
-
-    loginBtn.addEventListener('click', handleLogin);
-    registerBtn.addEventListener('click', handleRegister);
-    logoutBtn.addEventListener('click', handleLogout);
-
-    // Initialize the app on window load
-    window.onload = async () => {
+  useEffect(() => {
+    const initializeFirebase = async () => {
       try {
         const app = initializeApp(firebaseConfig);
-        db = getFirestore(app);
-        auth = getAuth(app);
+        const dbInstance = getFirestore(app);
+        const authInstance = getAuth(app);
+        setDb(dbInstance);
+        setAuth(authInstance);
 
-        // Set up auth state change listener
-        onAuthStateChanged(auth, async (user) => {
+        onAuthStateChanged(authInstance, (user) => {
           if (user) {
-            currentUser = user;
-            // A logged-in user exists, show the dashboard or login page
-            showPage('login');
+            setUser(user);
+            setIsAuthReady(true);
           } else {
-            currentUser = null;
-            showPage('login');
+            setUser(null);
+            setIsAuthReady(true);
           }
         });
 
         if (initialAuthToken) {
-            await signInWithCustomToken(auth, initialAuthToken);
+          await signInWithCustomToken(authInstance, initialAuthToken);
         } else {
-            await signInAnonymously(auth);
+          await signInAnonymously(authInstance);
         }
-
       } catch (error) {
         console.error("Firebase initialization failed:", error);
         showMessage('Error', "Failed to initialize the app. Please try again later.");
       }
     };
-  </script>
-</body>
-            </html>
-            
+
+    initializeFirebase();
+  }, []);
+
+  // Effect for Admin: Fetch ALL posts
+  useEffect(() => {
+    if (isAuthReady && db && role === 'admin') {
+      const postsRef = collection(db, `/artifacts/${appId}/public/data/posts`);
+      const unsubscribe = onSnapshot(postsRef, (snapshot) => {
+        const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Sort posts by date, newest first
+        fetchedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setAdminPosts(fetchedPosts);
+      });
+      return () => unsubscribe();
+    }
+  }, [isAuthReady, db, role]);
+
+  // Effect for School: Fetch only their own posts
+  useEffect(() => {
+    if (isAuthReady && db && role === 'school' && schoolId) {
+      const postsRef = collection(db, `/artifacts/${appId}/public/data/posts`);
+      const q = query(postsRef, where('schoolId', '==', schoolId));
+      const unsubscribe = onSnapshot(q, (snapshot) => {
+        const fetchedPosts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        fetchedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setSchoolPosts(fetchedPosts);
+      });
+      return () => unsubscribe();
+    }
+  }, [isAuthReady, db, role, schoolId]);
+
+
+  const handleRegister = async () => {
+    const id = registerSchoolId;
+    const password = registerPassword;
+
+    if (!id || !password) {
+      showMessage('Error', 'School ID and password are required.');
+      return;
+    }
+
+    try {
+      const docRef = doc(db, `/artifacts/${appId}/public/data/accounts`, id);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        showMessage('Error', 'Account ID already exists. Please choose another.');
+      } else {
+        const saltRounds = 10;
+        const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+        await setDoc(docRef, {
+          id: id,
+          passwordHash: hashedPassword,
+          role: 'school',
+        });
+        showMessage('Success', 'Registration successful! Please log in.');
+        setCurrentPage('login');
+        setRegisterSchoolId('');
+        setRegisterPassword('');
+      }
+    } catch (error) {
+      console.error("Registration failed:", error);
+      showMessage('Error', `Registration failed: ${error.message}`);
+    }
+  };
+
+  const handleLogin = async () => {
+    const id = loginId;
+    const password = loginPassword;
+    
+    if (!id || !password) {
+      showMessage('Error', 'ID and password are required.');
+      return;
+    }
+    
+    // Check for Admin login first (hardcoded)
+    if (id === ADMIN_ID && password === ADMIN_PASSWORD) {
+      showMessage('Success', 'Admin login successful!');
+      setSchoolId(id); // Use admin as schoolId for simplicity
+      setRole('admin');
+      setCurrentPage('admin-dashboard');
+      setLoginId('');
+      setLoginPassword('');
+      return;
+    }
+
+    // Then check for School login (from Firestore)
+    try {
+      const docRef = doc(db, `/artifacts/${appId}/public/data/accounts`, id);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const { passwordHash, role: storedRole } = docSnap.data();
+        if (storedRole !== 'school') {
+          showMessage('Error', 'Invalid role for this account.');
+          return;
+        }
+
+        const match = await bcrypt.compare(password, passwordHash);
+
+        if (match) {
+          showMessage('Success', 'School login successful!');
+          setSchoolId(id);
+          setRole('school');
+          setCurrentPage('school-dashboard');
+          setLoginId('');
+          setLoginPassword('');
+        } else {
+          showMessage('Error', 'Invalid password.');
+        }
+      } else {
+        showMessage('Error', 'Account ID not found.');
+      }
+    } catch (error) {
+      console.error("Login failed:", error);
+      showMessage('Error', `Login failed: ${error.message}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      if (auth.currentUser) {
+        await signOut(auth);
+      }
+      setRole('');
+      setSchoolId('');
+      setCurrentPage('login');
+      showMessage('Logged Out', 'You have been successfully logged out.');
+    } catch (error) {
+      console.error("Logout failed:", error);
+      showMessage('Error', `Logout failed: ${error.message}`);
+    }
+  };
+  
+  const handlePost = async () => {
+    if (!postTitle || !postContent) {
+      showMessage('Error', 'Title and content are required for a post.');
+      return;
+    }
+
+    const placeholderImageUrl = "https://placehold.co/600x400/292524/fff?text=School+Image";
+
+    try {
+      await addDoc(collection(db, `/artifacts/${appId}/public/data/posts`), {
+        title: postTitle,
+        content: postContent,
+        imageUrl: placeholderImageUrl,
+        schoolId: schoolId,
+        createdAt: new Date().toISOString(),
+      });
+      showMessage('Success', 'Post created successfully!');
+      setPostTitle('');
+      setPostContent('');
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      showMessage('Error', `Failed to create post: ${error.message}`);
+    }
+  };
+
+  const renderLoginPage = () => (
+    <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+      <h2 className="text-3xl font-bold text-gray-800 text-center mb-6">Social App Login</h2>
+      <input
+        type="text"
+        placeholder="Account ID (Ed, As, Ot or admin)"
+        className="app-input"
+        value={loginId}
+        onChange={(e) => setLoginId(e.target.value)}
+      />
+      <input
+        type="password"
+        placeholder="Password (FARHAN for admin)"
+        className="app-input"
+        value={loginPassword}
+        onChange={(e) => setLoginPassword(e.target.value)}
+      />
+      <button onClick={handleLogin} className="app-button-primary mb-2">
+        Login
+      </button>
+      <p className="mt-4 text-center text-sm text-gray-600">
+        Don't have a school account?
+        <a href="#" onClick={() => setCurrentPage('register')} className="text-indigo-600 font-medium hover:underline">
+          Register here
+        </a>
+      </p>
+    </div>
+  );
+
+  const renderRegisterPage = () => (
+    <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+      <h2 className="text-3xl font-bold text-gray-800 text-center mb-6">School Registration</h2>
+      <input
+        type="text"
+        placeholder="School ID (e.g., Ed, As, Ot)"
+        className="app-input"
+        value={registerSchoolId}
+        onChange={(e) => setRegisterSchoolId(e.target.value)}
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        className="app-input"
+        value={registerPassword}
+        onChange={(e) => setRegisterPassword(e.target.value)}
+      />
+      <button onClick={handleRegister} className="app-button-primary mb-2">
+        Register School Account
+      </button>
+      <p className="mt-4 text-center text-sm text-gray-600">
+        Already have an account?
+        <a href="#" onClick={() => setCurrentPage('login')} className="text-green-600 font-medium hover:underline">
+          Login here
+        </a>
+      </p>
+    </div>
+  );
+
+  const renderSchoolDashboard = () => (
+    <div className="bg-indigo-500 text-white p-8 rounded-lg shadow-xl w-full max-w-2xl">
+      <h2 className="text-3xl font-bold text-center mb-4">Dashboard for {schoolId}</h2>
+      <p className="text-center text-gray-200 mb-6">Welcome to your school's private space. You can post news here.</p>
+      <div className="mb-6 bg-white p-6 rounded-lg text-gray-800">
+        <h3 className="text-2xl font-semibold mb-4">Create a New Post</h3>
+        <input
+          type="text"
+          placeholder="Post Title (e.g., Summer Camp Announcement)"
+          className="app-input"
+          value={postTitle}
+          onChange={(e) => setPostTitle(e.target.value)}
+        />
+        <textarea
+          placeholder="What's the news?"
+          className="app-input h-32"
+          value={postContent}
+          onChange={(e) => setPostContent(e.target.value)}
+        ></textarea>
+        {/* Placeholder for image upload */}
+        <div className="flex justify-center items-center h-48 bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 mb-4 text-gray-500">
+          Upload School Photo Here
+        </div>
+        <button onClick={handlePost} className="app-button-primary">
+          Post News
+        </button>
+      </div>
+      <div className="mt-8 space-y-6">
+        <h3 className="text-2xl font-bold text-center text-white">Your Posts</h3>
+        {schoolPosts.length > 0 ? (
+          schoolPosts.map(post => (
+            <div key={post.id} className="bg-white p-6 rounded-lg shadow-md text-gray-800">
+              <div className="flex items-center mb-4">
+                <img src="https://placehold.co/40x40/E879F9/fff?text=S" alt="School Icon" className="rounded-full mr-4" />
+                <div>
+                  <p className="font-semibold text-lg text-indigo-600">{post.schoolId}</p>
+                  <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+              <h3 className="text-xl font-bold mb-2">{post.title}</h3>
+              <p className="text-gray-700 mb-4">{post.content}</p>
+              <img src={post.imageUrl} alt="Post Image" className="w-full rounded-lg" />
+            </div>
+          ))
+        ) : (
+          <p className="text-center text-gray-200">You haven't posted anything yet.</p>
+        )}
+      </div>
+      <button onClick={handleLogout} className="app-button-danger mt-6">
+        Logout
+      </button>
+    </div>
+  );
+  
+  const renderAdminDashboard = () => (
+    <div className="bg-gray-100 p-8 rounded-lg shadow-xl w-full max-w-2xl">
+      <h2 className="text-3xl font-bold text-gray-800 text-center mb-4">Admin Dashboard</h2>
+      <p className="text-center text-gray-600 mb-6">Logged in as: <span className="font-bold">Admin</span></p>
+      <div className="space-y-6">
+        {adminPosts.length > 0 ? (
+          adminPosts.map(post => (
+            <div key={post.id} className="bg-white p-6 rounded-lg shadow-md">
+              <div className="flex items-center mb-4">
+                <img src="https://placehold.co/40x40/E879F9/fff?text=S" alt="School Icon" className="rounded-full mr-4" />
+                <div>
+                  <p className="font-semibold text-lg text-indigo-600">Post from {post.schoolId}</p>
+                  <p className="text-xs text-gray-500">{new Date(post.createdAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+              <h3 className="text-xl font-bold mb-2">{post.title}</h3>
+              <p className="text-gray-700 mb-4">{post.content}</p>
+              <img src={post.imageUrl} alt="Post Image" className="w-full rounded-lg mb-4" />
+              <div className="flex justify-between">
+                <button
+                  onClick={() => saveImage(post.imageUrl, `${post.schoolId}-${post.title}.png`)}
+                  className="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition duration-300 text-sm"
+                >
+                  Save to Phone
+                </button>
+                <button
+                  onClick={() => shareOnWhatsApp(`Check out this post from ${post.schoolId}:\n\n${post.title}\n${post.content}`)}
+                  className="bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300 text-sm"
+                >
+                  Share on WhatsApp
+                </button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <p className="text-center text-gray-500">No posts from schools yet.</p>
+        )}
+      </div>
+      <button onClick={handleLogout} className="app-button-danger mt-6">
+        Logout
+      </button>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
+      {isAuthReady && (
+        <>
+          {currentPage === 'login' && renderLoginPage()}
+          {currentPage === 'register' && renderRegisterPage()}
+          {currentPage === 'school-dashboard' && renderSchoolDashboard()}
+          {currentPage === 'admin-dashboard' && renderAdminDashboard()}
+        </>
+      )}
+      {showModal && <Modal {...modalContent} onClose={closeModal} />}
+    </div>
+  );
+};
+
+export default App;
+                
