@@ -3,49 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A professional blog with great articles on various topics.">
+    <meta name="author" content="Your Name">
     <title>My Professional Blog</title>
-    <!-- Inter Font -->
+    <link rel="icon" href="favicon.ico">
+    <!-- Google Font: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom styles for a polished look */
+        /* Custom Styles */
         body {
             font-family: 'Inter', sans-serif;
             background: #f8f9fa;
+            transition: background-color 0.3s ease;
         }
         .prose-custom {
             max-width: none;
         }
-        /* Markdown-like styling within posts */
         .prose-custom h1, .prose-custom h2, .prose-custom h3 {
             font-weight: bold;
-            margin-top: 1.5em;
-            margin-bottom: 0.5em;
         }
         .prose-custom p {
-            margin-bottom: 1em;
-            line-height: 1.6;
+            margin-bottom: 1.2em;
+            line-height: 1.7;
         }
         .prose-custom ul, .prose-custom ol {
-            margin-bottom: 1em;
-            padding-left: 1.5em;
+            margin-bottom: 1.2em;
         }
-        .prose-custom li {
-            margin-bottom: 0.5em;
-        }
-        /* Mobile menu specific styles */
-        #mobile-menu {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            transform: translateY(-100%);
-            z-index: 40;
-        }
-        #mobile-menu.active {
-            transform: translateY(0);
-        }
-        /* Custom modal styles */
         .modal {
             z-index: 50;
             display: none;
@@ -53,291 +40,204 @@
         .modal.active {
             display: flex;
         }
+        .blog-post-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .blog-post-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        .dark-mode {
+            background-color: #1f2937;
+            color: #f9fafb;
+        }
+        .light-mode {
+            background-color: #f8f9fa;
+            color: #1f2937;
+        }
+        .theme-toggle-btn {
+            transition: background-color 0.3s ease;
+        }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col items-center">
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col items-center dark:bg-gray-900 dark:text-gray-100">
 
-    <!-- Header with Hamburger Menu -->
-    <header class="w-full flex justify-between items-center px-6 py-4 bg-white shadow-lg fixed top-0 left-0 z-50">
-        <button id="hamburger-btn" class="p-2 rounded-lg text-gray-700 hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors">
-            <!-- Hamburger Icon (SVG for a clean look) -->
+    <!-- Header with Theme Toggle and Hamburger Menu -->
+    <header class="w-full flex justify-between items-center px-6 py-4 bg-white dark:bg-gray-800 shadow-lg fixed top-0 left-0 z-50">
+        <button id="hamburger-btn" class="p-2 rounded-lg text-gray-700 dark:text-gray-100 hover:bg-purple-100 focus:outline-none">
             <svg class="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
         </button>
         <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">My Blog</h1>
-        <div class="w-8"></div> <!-- Spacer for alignment -->
+        <button id="theme-toggle-btn" class="theme-toggle-btn text-2xl text-gray-700 dark:text-gray-100 p-2 rounded-lg">
+            🌙
+        </button>
     </header>
 
-    <!-- Mobile Menu (Hidden by default) -->
-    <div id="mobile-menu" class="fixed top-20 left-0 right-0 bg-white shadow-xl flex flex-col items-center py-8">
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="fixed top-20 left-0 right-0 bg-white dark:bg-gray-800 shadow-xl flex flex-col items-center py-8">
         <nav class="space-y-6 text-center">
-            <a id="home-link" href="#" class="block text-2xl font-bold text-gray-700 hover:text-purple-600 transition-colors duration-300">Home</a>
-            <a id="about-link" href="#about-section" class="block text-2xl font-bold text-gray-700 hover:text-purple-600 transition-colors duration-300">About</a>
+            <a href="#" class="block text-2xl font-bold text-gray-700 dark:text-gray-100 hover:text-purple-600 transition-colors duration-300">Home</a>
+            <a href="#about-section" class="block text-2xl font-bold text-gray-700 dark:text-gray-100 hover:text-purple-600 transition-colors duration-300">About</a>
             <button id="admin-menu-btn" class="block text-xl font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 px-8 py-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
                 Admin
             </button>
         </nav>
     </div>
 
-    <!-- Main Content Container -->
+    <!-- Main Content -->
     <main class="container w-full mt-28 mb-8 px-4 sm:px-6">
-        <section id="blog-posts-section" class="w-full bg-white rounded-3xl shadow-lg p-8 mb-8">
+        <section id="blog-posts-section" class="w-full bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-8 mb-8">
             <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 text-center mb-10">Latest Posts</h2>
             <div id="blog-container" class="space-y-12">
-                <!-- Blog posts will be rendered here by JavaScript -->
+                <!-- Blog posts will be dynamically rendered here -->
             </div>
         </section>
 
         <!-- About Section -->
-        <section id="about-section" class="w-full bg-white rounded-3xl shadow-lg p-8 my-8">
+        <section id="about-section" class="w-full bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-8 my-8">
             <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 text-center mb-8">About Me</h2>
-            <p class="prose-custom max-w-2xl mx-auto text-gray-600 text-lg leading-relaxed text-center">
-                Welcome to my professional blog! This is a simple, elegant single-page website powered by HTML, Tailwind CSS, and a dash of JavaScript. It's fully responsive and hosted for free on GitHub Pages. Thanks for visiting!
+            <p class="prose-custom max-w-2xl mx-auto text-gray-600 dark:text-gray-300 text-lg leading-relaxed text-center">
+                Welcome to my professional blog! I share my thoughts on various topics, from technology to personal growth. This blog is powered by HTML, Tailwind CSS, and JavaScript.
             </p>
         </section>
     </main>
 
-    <!-- Success/Error Message Modal (Custom Alert) -->
-    <div id="message-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center">
-        <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-sm m-4 text-center">
-            <p id="message-text" class="text-lg font-semibold text-gray-700 mb-4"></p>
-            <button id="message-close-btn" class="bg-purple-600 text-white font-bold py-2 px-6 rounded-full hover:bg-purple-700 transition-colors">Okay</button>
-        </div>
-    </div>
-    
-    <!-- Admin Panel (Password Modal) -->
+    <!-- Admin Panel Modal -->
     <div id="password-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md m-4">
+        <div class="bg-white dark:bg-gray-700 p-8 rounded-xl shadow-2xl w-full max-w-md m-4">
             <h2 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 text-center mb-4">Admin Login</h2>
-            <p class="text-sm text-red-500 mb-6 text-center">
-                The default password is 'admin123'. Change it in the code for security.
-            </p>
             <form id="password-form" class="space-y-6">
-                <input type="password" id="password-input" placeholder="Enter password" class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors">
-                <button type="submit" class="w-full bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 shadow-md transition-all transform hover:scale-105">Login</button>
-                <button type="button" id="close-password-modal" class="w-full text-gray-600 font-bold py-3 px-6 rounded-lg hover:bg-gray-200 transition-colors">Cancel</button>
+                <input type="password" id="password-input" placeholder="Enter password" class="w-full px-5 py-3 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+                <button type="submit" class="w-full bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 shadow-md">Login</button>
+                <button type="button" id="close-password-modal" class="w-full text-gray-600 dark:text-gray-100 font-bold py-3 px-6 rounded-lg hover:bg-gray-200">Cancel</button>
             </form>
         </div>
     </div>
 
     <!-- Admin Post Editor Modal -->
     <div id="admin-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center">
-        <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-3xl m-4 max-h-[90vh] overflow-y-auto">
+        <div class="bg-white dark:bg-gray-700 p-8 rounded-xl shadow-2xl w-full max-w-3xl m-4 max-h-[90vh] overflow-y-auto">
             <h2 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 text-center mb-6">Create a New Post</h2>
             <form id="post-form" class="space-y-6">
                 <div>
-                    <label for="post-title" class="block text-gray-700 font-bold mb-2">Article Title</label>
-                    <input type="text" id="post-title" required class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors">
+                    <label for="post-title" class="block text-gray-700 dark:text-gray-100 font-bold mb-2">Article Title</label>
+                    <input type="text" id="post-title" required class="w-full px-5 py-3 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
                 </div>
                 <div>
-                    <label for="post-content" class="block text-gray-700 font-bold mb-2">Article Content (Markdown supported)</label>
-                    <textarea id="post-content" rows="12" required class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors"></textarea>
+                    <label for="post-content" class="block text-gray-700 dark:text-gray-100 font-bold mb-2">Article Content (Markdown supported)</label>
+                    <textarea id="post-content" rows="12" required class="w-full px-5 py-3 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
                 </div>
-                <div>
-                    <label for="post-video" class="block text-gray-700 font-bold mb-2">YouTube Video URL (Optional)</label>
-                    <input type="url" id="post-video" placeholder="e.g., https://www.youtube.com/watch?v=dQw4w9WgXcQ" class="w-full px-5 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors">
-                </div>
-                <div class="flex justify-end space-x-4">
-                    <button type="button" id="close-admin-modal" class="bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg hover:bg-gray-400 transition-colors">Cancel</button>
-                    <button type="submit" class="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 shadow-md transition-all transform hover:scale-105">Publish Post</button>
+                <div class="flex justify-between">
+                    <button type="submit" id="save-post" class="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 shadow-md">Save Post</button>
+                    <button type="button" id="close-admin-modal" class="bg-gray-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-600 shadow-md">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- JavaScript for Modal Functionality & Local Storage -->
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const blogContainer = document.getElementById('blog-container');
-            const passwordModal = document.getElementById('password-modal');
-            const passwordForm = document.getElementById('password-form');
-            const passwordInput = document.getElementById('password-input');
-            const closePasswordModalBtn = document.getElementById('close-password-modal');
-            const adminModal = document.getElementById('admin-modal');
-            const postForm = document.getElementById('post-form');
-            const closeAdminModalBtn = document.getElementById('close-admin-modal');
-            const messageModal = document.getElementById('message-modal');
-            const messageText = document.getElementById('message-text');
-            const messageCloseBtn = document.getElementById('message-close-btn');
-            
-            const hamburgerBtn = document.getElementById('hamburger-btn');
-            const mobileMenu = document.getElementById('mobile-menu');
-            const adminMenuBtn = document.getElementById('admin-menu-btn');
-            const homeLink = document.getElementById('home-link');
-            const aboutLink = document.getElementById('about-link');
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+        const body = document.body;
+        const hamburgerBtn = document.getElementById('hamburger-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const adminMenuBtn = document.getElementById('admin-menu-btn');
+        const passwordModal = document.getElementById('password-modal');
+        const closePasswordModalBtn = document.getElementById('close-password-modal');
+        const postForm = document.getElementById('post-form');
+        const adminModal = document.getElementById('admin-modal');
+        const closeAdminModalBtn = document.getElementById('close-admin-modal');
+        const blogContainer = document.getElementById('blog-container');
+        const passwordInput = document.getElementById('password-input');
+        const savePostBtn = document.getElementById('save-post');
 
-            // Hardcoded password for demonstration.
-            const ADMIN_PASSWORD = 'admin123';
-            let isUserAdmin = false;
+        let isDarkMode = localStorage.getItem('dark-mode') === 'true';
 
-            // --- Post Data Handling ---
-            let posts = JSON.parse(localStorage.getItem('blogPosts')) || [];
-
-            function savePosts() {
-                localStorage.setItem('blogPosts', JSON.stringify(posts));
-                renderPosts();
+        // Theme toggle functionality
+        const toggleTheme = () => {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem('dark-mode', isDarkMode);
+            if (isDarkMode) {
+                body.classList.add('dark');
+                themeToggleBtn.innerText = '🌞';
+            } else {
+                body.classList.remove('dark');
+                themeToggleBtn.innerText = '🌙';
             }
+        };
 
-            // Function to show a custom modal message instead of alert()
-            function showMessage(text) {
-                messageText.textContent = text;
-                messageModal.classList.add('active');
-            }
+        // Hamburger Menu functionality
+        hamburgerBtn.addEventListener('click', () => {
+            mobileMenu.classList.toggle('hidden');
+        });
 
-            function renderPosts() {
-                blogContainer.innerHTML = ''; // Clear existing posts
+        // Admin Menu functionality
+        adminMenuBtn.addEventListener('click', () => {
+            passwordModal.classList.add('active');
+        });
 
-                if (posts.length === 0) {
-                    blogContainer.innerHTML = '<p class="text-gray-400 text-center text-lg italic">No blog posts yet. Be the first to post!</p>';
-                    return;
-                }
+        // Close password modal
+        closePasswordModalBtn.addEventListener('click', () => {
+            passwordModal.classList.remove('active');
+        });
 
-                posts.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-                posts.forEach(post => {
-                    const postElement = document.createElement('article');
-                    postElement.classList.add('bg-white', 'p-8', 'rounded-2xl', 'shadow-md', 'hover:shadow-xl', 'transition-shadow', 'duration-300', 'border-t-4', 'border-purple-500', 'transform', 'hover:-translate-y-1');
-                    postElement.innerHTML = `
-                        <div class="flex items-center mb-4 text-sm text-gray-500 border-b-2 border-gray-100 pb-2">
-                            <span>Posted on ${new Date(post.date).toLocaleDateString()}</span>
-                        </div>
-                        <h2 class="text-3xl font-bold text-gray-800 mb-4">${post.title}</h2>
-                        <div class="prose-custom text-gray-700 leading-relaxed mb-6">
-                            ${parseMarkdown(post.content)}
-                        </div>
-                        ${post.videoUrl ? `
-                            <div class="mt-6 w-full aspect-video overflow-hidden rounded-xl shadow-inner">
-                                <iframe 
-                                    class="w-full h-full"
-                                    src="${getYouTubeEmbedUrl(post.videoUrl)}"
-                                    frameborder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                    allowfullscreen
-                                ></iframe>
-                            </div>` : ''}
-                    `;
-                    blogContainer.appendChild(postElement);
-                });
-            }
-
-            // More robust Markdown-like parser
-            function parseMarkdown(text) {
-                // Headers
-                text = text.replace(/^### (.*)/gm, '<h3>$1</h3>');
-                text = text.replace(/^## (.*)/gm, '<h2>$1</h2>');
-                text = text.replace(/^# (.*)/gm, '<h1>$1</h1>');
-                // Bold
-                text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                // Italic
-                text = text.replace(/\*(.*?)\*/g, '<em>$1</em>');
-                // Links
-                text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-purple-600 hover:underline transition-colors">$1</a>');
-                // Unordered Lists
-                text = text.replace(/^\* (.*)/gm, '<li>$1</li>');
-                if (text.includes('<li>')) {
-                    text = '<ul>' + text + '</ul>';
-                }
-                // Paragraphs (handle newlines)
-                text = text.replace(/(\n)(?!\n|<ul>|<li>|<h3>)/g, '<p>');
-                text = text.replace(/<\/ul><p>/g, '</ul>'); // Clean up list formatting
-                return text;
-            }
-
-            // Function to convert YouTube URL to embed URL
-            function getYouTubeEmbedUrl(url) {
-                const videoIdMatch = url.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/ ]{11})/);
-                return videoIdMatch ? `https://www.youtube.com/embed/${videoIdMatch[1]}` : '';
-            }
-
-            // Initial render
-            renderPosts();
-
-            // --- Event Listeners ---
-
-            // Toggle mobile menu
-            hamburgerBtn.addEventListener('click', () => {
-                mobileMenu.classList.toggle('active');
-            });
-
-            // "Home" link scrolls to the top
-            homeLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                });
-                mobileMenu.classList.remove('active'); // Close menu after click
-            });
-            
-            // "About" link scrolls to the about section
-            aboutLink.addEventListener('click', (e) => {
-                e.preventDefault();
-                document.getElementById('about-section').scrollIntoView({
-                    behavior: 'smooth'
-                });
-                mobileMenu.classList.remove('active'); // Close menu after click
-            });
-
-            // "Admin" button in menu opens password modal
-            adminMenuBtn.addEventListener('click', () => {
-                mobileMenu.classList.remove('active'); // Close menu
-                passwordModal.classList.add('active');
-                passwordInput.focus();
-            });
-
-            // Password form submission
-            passwordForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                if (passwordInput.value === ADMIN_PASSWORD) {
-                    isUserAdmin = true;
-                    passwordModal.classList.remove('active');
-                    adminModal.classList.add('active');
-                    passwordInput.value = ''; // Clear input
-                } else {
-                    showMessage('Incorrect password. Please try again.');
-                    passwordInput.value = ''; // Clear input
-                }
-            });
-
-            // Close password modal
-            closePasswordModalBtn.addEventListener('click', () => {
-                passwordModal.classList.remove('active');
-            });
-
-            // Close custom message modal
-            messageCloseBtn.addEventListener('click', () => {
-                messageModal.classList.remove('active');
-            });
-
-            // Close admin modal
-            closeAdminModalBtn.addEventListener('click', () => {
-                adminModal.classList.remove('active');
-                postForm.reset(); // Clear form fields
-            });
-
-            // Post form submission
-            postForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-
-                if (!isUserAdmin) {
-                    showMessage('You are not authorized to post.');
-                    return;
-                }
-
-                const newPost = {
-                    title: document.getElementById('post-title').value,
-                    content: document.getElementById('post-content').value,
-                    videoUrl: document.getElementById('post-video').value,
-                    date: new Date().toISOString()
-                };
-
+        // Post creation functionality
+        postForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const postTitle = document.getElementById('post-title').value;
+            const postContent = document.getElementById('post-content').value;
+            if (postTitle && postContent) {
+                const newPost = { title: postTitle, content: postContent, date: new Date() };
+                const posts = JSON.parse(localStorage.getItem('posts')) || [];
                 posts.push(newPost);
-                savePosts();
-                adminModal.classList.remove('active');
-                postForm.reset(); // Clear form fields
-                showMessage('Post published successfully!');
+                localStorage.setItem('posts', JSON.stringify(posts));
+                displayPosts(posts);
+                closeAdminModal();
+            } else {
+                alert('Please fill in both fields.');
+            }
+        });
+
+        const displayPosts = (posts) => {
+            blogContainer.innerHTML = '';
+            posts.forEach((post) => {
+                const postElement = document.createElement('div');
+                postElement.classList.add('blog-post-card', 'bg-white', 'dark:bg-gray-700', 'rounded-lg', 'p-6', 'shadow-lg');
+                postElement.innerHTML = `
+                    <h3 class="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-4">${post.title}</h3>
+                    <p class="text-lg text-gray-700 dark:text-gray-200">${post.content}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">${new Date(post.date).toLocaleDateString()}</p>
+                `;
+                blogContainer.appendChild(postElement);
             });
+        };
+
+        // Initial Theme Setup
+        if (isDarkMode) {
+            body.classList.add('dark');
+            themeToggleBtn.innerText = '🌞';
+        } else {
+            body.classList.remove('dark');
+            themeToggleBtn.innerText = '🌙';
+        }
+
+        // Initial Posts
+        const posts = JSON.parse(localStorage.getItem('posts')) || [];
+        displayPosts(posts);
+
+        // Modal open/close
+        const closeAdminModal = () => {
+            adminModal.classList.remove('active');
+        };
+
+        // Save post
+        savePostBtn.addEventListener('click', () => {
+            // Save logic here
         });
     </script>
+
 </body>
-</html>
+                </html>
+                
