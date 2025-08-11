@@ -1,243 +1,310 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A professional blog with great articles on various topics.">
+    <meta name="description" content="A professional blog on various topics including tech, lifestyle, and more.">
     <meta name="author" content="Your Name">
-    <title>My Professional Blog</title>
+    <title>XXX-MONEY Blog</title>
     <link rel="icon" href="favicon.ico">
-    <!-- Google Font: Inter -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS CDN -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom Styles */
         body {
             font-family: 'Inter', sans-serif;
-            background: #f8f9fa;
-            transition: background-color 0.3s ease;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
         }
-        .prose-custom {
-            max-width: none;
+        .header {
+            display: flex;
+            justify-content: space-between;
+            padding: 20px;
+            background-color: #1f2937;
+            color: white;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
         }
-        .prose-custom h1, .prose-custom h2, .prose-custom h3 {
+        .header h1 {
+            font-size: 24px;
             font-weight: bold;
+            display: flex;
+            align-items: center;
         }
-        .prose-custom p {
-            margin-bottom: 1.2em;
-            line-height: 1.7;
+        .header .logo {
+            margin-right: 10px;
+            font-size: 32px;
         }
-        .prose-custom ul, .prose-custom ol {
-            margin-bottom: 1.2em;
+        .hamburger {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 30px;
+            height: 24px;
+        }
+        .hamburger div {
+            background-color: white;
+            height: 4px;
+        }
+        .menu {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            right: 0;
+            background-color: #1f2937;
+            color: white;
+            display: none;
+            flex-direction: column;
+            padding: 20px;
+            z-index: 999;
+        }
+        .menu a {
+            color: white;
+            font-size: 18px;
+            padding: 10px 0;
+            text-align: center;
+            text-decoration: none;
+        }
+        .menu a:hover {
+            background-color: #4b5563;
         }
         .modal {
-            z-index: 50;
             display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
         }
-        .modal.active {
-            display: flex;
+        .modal .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 300px;
         }
-        .blog-post-card {
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        .modal .modal-content input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
         }
-        .blog-post-card:hover {
-            transform: translateY(-10px);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        .subscribe-btn {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background-color: #6b21a8;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 50px;
+            font-size: 16px;
+            cursor: pointer;
         }
-        .dark-mode {
-            background-color: #1f2937;
-            color: #f9fafb;
+        .subscribe-form {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 400px;
+            box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
         }
-        .light-mode {
-            background-color: #f8f9fa;
-            color: #1f2937;
+        .subscribe-form input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
         }
-        .theme-toggle-btn {
-            transition: background-color 0.3s ease;
+        .blog-post {
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .post-title {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .post-content {
+            margin-top: 10px;
+            font-size: 18px;
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col items-center dark:bg-gray-900 dark:text-gray-100">
+<body>
 
-    <!-- Header with Theme Toggle and Hamburger Menu -->
-    <header class="w-full flex justify-between items-center px-6 py-4 bg-white dark:bg-gray-800 shadow-lg fixed top-0 left-0 z-50">
-        <button id="hamburger-btn" class="p-2 rounded-lg text-gray-700 dark:text-gray-100 hover:bg-purple-100 focus:outline-none">
-            <svg class="h-8 w-8 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-        </button>
-        <h1 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500">My Blog</h1>
-        <button id="theme-toggle-btn" class="theme-toggle-btn text-2xl text-gray-700 dark:text-gray-100 p-2 rounded-lg">
-            🌙
-        </button>
+    <!-- Header -->
+    <header class="header">
+        <div>
+            <button class="hamburger" onclick="toggleMenu()">
+                <div></div>
+                <div></div>
+                <div></div>
+            </button>
+            <h1><span class="logo">✓</span> XXX-MONEY</h1>
+        </div>
+        <button class="theme-toggle-btn" onclick="toggleTheme()">🌙</button>
     </header>
 
-    <!-- Mobile Menu -->
-    <div id="mobile-menu" class="fixed top-20 left-0 right-0 bg-white dark:bg-gray-800 shadow-xl flex flex-col items-center py-8">
-        <nav class="space-y-6 text-center">
-            <a href="#" class="block text-2xl font-bold text-gray-700 dark:text-gray-100 hover:text-purple-600 transition-colors duration-300">Home</a>
-            <a href="#about-section" class="block text-2xl font-bold text-gray-700 dark:text-gray-100 hover:text-purple-600 transition-colors duration-300">About</a>
-            <button id="admin-menu-btn" class="block text-xl font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 px-8 py-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
-                Admin
-            </button>
-        </nav>
+    <!-- Sidebar Menu -->
+    <div id="menu" class="menu">
+        <a href="#">Home</a>
+        <a href="#about">About</a>
+        <a href="https://wa.me/1546350499" target="_blank">WhatsApp</a>
+        <a href="#" onclick="showAdminModal()">Admin</a>
+    </div>
+
+    <!-- Admin Modal -->
+    <div id="admin-modal" class="modal">
+        <div class="modal-content">
+            <h2>Admin Login</h2>
+            <input type="password" id="admin-password" placeholder="Enter Password" />
+            <button onclick="checkPassword()">Login</button>
+        </div>
+    </div>
+
+    <!-- Subscription Button -->
+    <button class="subscribe-btn" onclick="showSubscribeForm()">Subscribe</button>
+
+    <!-- Subscription Form -->
+    <div id="subscribe-form" class="subscribe-form">
+        <h3>Subscribe</h3>
+        <input type="text" id="name" placeholder="Enter your name" />
+        <input type="email" id="email" placeholder="Enter your email" />
+        <input type="text" id="number" placeholder="Enter your number" />
+        <button onclick="sendSubscription()">Send</button>
+    </div>
+
+    <!-- Admin Area for Posting Articles -->
+    <div id="admin-area" class="modal">
+        <div class="modal-content">
+            <h2>Create New Post</h2>
+            <input type="text" id="post-title" placeholder="Enter post title" />
+            <textarea id="post-content" placeholder="Enter post content" rows="5"></textarea>
+            <input type="text" id="post-video" placeholder="Enter video URL (e.g., YouTube link)" />
+            <button onclick="savePost()">Post</button>
+        </div>
     </div>
 
     <!-- Main Content -->
-    <main class="container w-full mt-28 mb-8 px-4 sm:px-6">
-        <section id="blog-posts-section" class="w-full bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-8 mb-8">
-            <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 text-center mb-10">Latest Posts</h2>
-            <div id="blog-container" class="space-y-12">
-                <!-- Blog posts will be dynamically rendered here -->
-            </div>
-        </section>
-
-        <!-- About Section -->
-        <section id="about-section" class="w-full bg-white dark:bg-gray-800 rounded-3xl shadow-lg p-8 my-8">
-            <h2 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 text-center mb-8">About Me</h2>
-            <p class="prose-custom max-w-2xl mx-auto text-gray-600 dark:text-gray-300 text-lg leading-relaxed text-center">
-                Welcome to my professional blog! I share my thoughts on various topics, from technology to personal growth. This blog is powered by HTML, Tailwind CSS, and JavaScript.
-            </p>
+    <main id="main-content">
+        <section id="blog-posts">
+            <h2>Latest Blog Posts</h2>
+            <!-- Dynamic blog posts will be displayed here -->
         </section>
     </main>
 
-    <!-- Admin Panel Modal -->
-    <div id="password-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center">
-        <div class="bg-white dark:bg-gray-700 p-8 rounded-xl shadow-2xl w-full max-w-md m-4">
-            <h2 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 text-center mb-4">Admin Login</h2>
-            <form id="password-form" class="space-y-6">
-                <input type="password" id="password-input" placeholder="Enter password" class="w-full px-5 py-3 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                <button type="submit" class="w-full bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 shadow-md">Login</button>
-                <button type="button" id="close-password-modal" class="w-full text-gray-600 dark:text-gray-100 font-bold py-3 px-6 rounded-lg hover:bg-gray-200">Cancel</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Admin Post Editor Modal -->
-    <div id="admin-modal" class="modal fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center">
-        <div class="bg-white dark:bg-gray-700 p-8 rounded-xl shadow-2xl w-full max-w-3xl m-4 max-h-[90vh] overflow-y-auto">
-            <h2 class="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 text-center mb-6">Create a New Post</h2>
-            <form id="post-form" class="space-y-6">
-                <div>
-                    <label for="post-title" class="block text-gray-700 dark:text-gray-100 font-bold mb-2">Article Title</label>
-                    <input type="text" id="post-title" required class="w-full px-5 py-3 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
-                </div>
-                <div>
-                    <label for="post-content" class="block text-gray-700 dark:text-gray-100 font-bold mb-2">Article Content (Markdown supported)</label>
-                    <textarea id="post-content" rows="12" required class="w-full px-5 py-3 border border-gray-300 dark:border-gray-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"></textarea>
-                </div>
-                <div class="flex justify-between">
-                    <button type="submit" id="save-post" class="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 shadow-md">Save Post</button>
-                    <button type="button" id="close-admin-modal" class="bg-gray-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-600 shadow-md">Cancel</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- JavaScript for Modal Functionality & Local Storage -->
     <script>
-        const themeToggleBtn = document.getElementById('theme-toggle-btn');
-        const body = document.body;
-        const hamburgerBtn = document.getElementById('hamburger-btn');
-        const mobileMenu = document.getElementById('mobile-menu');
-        const adminMenuBtn = document.getElementById('admin-menu-btn');
-        const passwordModal = document.getElementById('password-modal');
-        const closePasswordModalBtn = document.getElementById('close-password-modal');
-        const postForm = document.getElementById('post-form');
-        const adminModal = document.getElementById('admin-modal');
-        const closeAdminModalBtn = document.getElementById('close-admin-modal');
-        const blogContainer = document.getElementById('blog-container');
-        const passwordInput = document.getElementById('password-input');
-        const savePostBtn = document.getElementById('save-post');
+        let posts = [];
 
-        let isDarkMode = localStorage.getItem('dark-mode') === 'true';
-
-        // Theme toggle functionality
-        const toggleTheme = () => {
-            isDarkMode = !isDarkMode;
-            localStorage.setItem('dark-mode', isDarkMode);
-            if (isDarkMode) {
-                body.classList.add('dark');
-                themeToggleBtn.innerText = '🌞';
-            } else {
-                body.classList.remove('dark');
-                themeToggleBtn.innerText = '🌙';
-            }
-        };
-
-        // Hamburger Menu functionality
-        hamburgerBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-        });
-
-        // Admin Menu functionality
-        adminMenuBtn.addEventListener('click', () => {
-            passwordModal.classList.add('active');
-        });
-
-        // Close password modal
-        closePasswordModalBtn.addEventListener('click', () => {
-            passwordModal.classList.remove('active');
-        });
-
-        // Post creation functionality
-        postForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const postTitle = document.getElementById('post-title').value;
-            const postContent = document.getElementById('post-content').value;
-            if (postTitle && postContent) {
-                const newPost = { title: postTitle, content: postContent, date: new Date() };
-                const posts = JSON.parse(localStorage.getItem('posts')) || [];
-                posts.push(newPost);
-                localStorage.setItem('posts', JSON.stringify(posts));
-                displayPosts(posts);
-                closeAdminModal();
-            } else {
-                alert('Please fill in both fields.');
-            }
-        });
-
-        const displayPosts = (posts) => {
-            blogContainer.innerHTML = '';
-            posts.forEach((post) => {
-                const postElement = document.createElement('div');
-                postElement.classList.add('blog-post-card', 'bg-white', 'dark:bg-gray-700', 'rounded-lg', 'p-6', 'shadow-lg');
-                postElement.innerHTML = `
-                    <h3 class="text-3xl font-bold text-purple-600 dark:text-purple-400 mb-4">${post.title}</h3>
-                    <p class="text-lg text-gray-700 dark:text-gray-200">${post.content}</p>
-                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">${new Date(post.date).toLocaleDateString()}</p>
-                `;
-                blogContainer.appendChild(postElement);
-            });
-        };
-
-        // Initial Theme Setup
-        if (isDarkMode) {
-            body.classList.add('dark');
-            themeToggleBtn.innerText = '🌞';
-        } else {
-            body.classList.remove('dark');
-            themeToggleBtn.innerText = '🌙';
+        // Toggle Hamburger Menu
+        function toggleMenu() {
+            const menu = document.getElementById("menu");
+            menu.style.display = (menu.style.display === "flex") ? "none" : "flex";
         }
 
-        // Initial Posts
-        const posts = JSON.parse(localStorage.getItem('posts')) || [];
-        displayPosts(posts);
+        // Toggle Theme (Light/Dark Mode)
+        function toggleTheme() {
+            document.body.classList.toggle("dark");
+        }
 
-        // Modal open/close
-        const closeAdminModal = () => {
-            adminModal.classList.remove('active');
+        // Admin Modal Password Check
+        function showAdminModal() {
+            const modal = document.getElementById("admin-modal");
+            modal.style.display = "flex";
+        }
+
+        function checkPassword() {
+            const password = document.getElementById("admin-password").value;
+            if (password === "FARHAN1") {
+                alert("Password Correct. Now you can add articles.");
+                document.getElementById("admin-modal").style.display = "none";
+                showAdminArea();
+            } else {
+                alert("Incorrect Password");
+            }
+        }
+
+        // Show Admin Area for Posting
+        function showAdminArea() {
+            const adminArea = document.getElementById("admin-area");
+            adminArea.style.display = "flex";
+        }
+
+        // Save New Post
+        function savePost() {
+            const title = document.getElementById("post-title").value;
+            const content = document.getElementById("post-content").value;
+            const videoUrl = document.getElementById("post-video").value;
+
+            if (title && content) {
+                const newPost = {
+                    title,
+                    content,
+                    videoUrl,
+                    date: new Date().toLocaleDateString()
+                };
+                posts.push(newPost);
+                localStorage.setItem("posts", JSON.stringify(posts)); // Save to localStorage for persistence
+                displayPosts();
+                document.getElementById("admin-area").style.display = "none";
+                document.getElementById("post-title").value = "";
+                document.getElementById("post-content").value = "";
+                document.getElementById("post-video").value = "";
+            } else {
+                alert("Title and Content are required.");
+            }
+        }
+
+        // Display Posts
+        function displayPosts() {
+            const blogPostsContainer = document.getElementById("blog-posts");
+            blogPostsContainer.innerHTML = '<h2>Latest Blog Posts</h2>';
+
+            const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
+            savedPosts.forEach(post => {
+                const postElement = document.createElement("div");
+                postElement.className = "blog-post";
+                postElement.innerHTML = `
+                    <div class="post-title">${post.title}</div>
+                    <div class="post-date">${post.date}</div>
+                    <div class="post-content">${post.content}</div>
+                    ${post.videoUrl ? `<iframe width="560" height="315" src="${post.videoUrl}" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>` : ''}
+                `;
+                blogPostsContainer.appendChild(postElement);
+            });
+        }
+
+        // Subscribe Form
+        function showSubscribeForm() {
+            const form = document.getElementById("subscribe-form");
+            form.style.display = "flex";
+        }
+
+        function sendSubscription() {
+            const name = document.getElementById("name").value;
+            const email = document.getElementById("email").value;
+            const number = document.getElementById("number").value;
+
+            const message = `Name: ${name}\nEmail: ${email}\nPhone: ${number}`;
+            const whatsappUrl = `https://wa.me/1546350499?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, "_blank");
+
+            alert("Subscription info sent to WhatsApp!");
+            document.getElementById("subscribe-form").style.display = "none";
+        }
+
+        // Initial Load
+        window.onload = function() {
+            displayPosts();
         };
-
-        // Save post
-        savePostBtn.addEventListener('click', () => {
-            // Save logic here
-        });
     </script>
-
 </body>
                 </html>
-                
+    
