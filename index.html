@@ -10,188 +10,211 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* General reset for padding, margin */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Body background and font styling */
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f5f5f5;
-            margin: 0;
-            padding-top: 80px;
+            background-color: #ffffff; /* White background */
+            color: #000; /* Black text */
         }
+
+        /* Header Styling */
         .header {
             display: flex;
-            justify-content: space-between;
-            padding: 20px;
-            background-color: #1f2937;
-            color: white;
+            justify-content: center;
+            align-items: center;
             position: fixed;
             top: 0;
             left: 0;
             right: 0;
-            z-index: 1000;
-            align-items: center;
+            z-index: 2000;
+            background-color: #1E40AF; /* Blue header */
+            padding: 10px 20px;
+            border-bottom: 2px solid #1D4ED8; /* Darker Blue Border */
         }
-        .header h1 {
-            font-size: 24px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
+
+        /* Hamburger Menu */
+        .hamburger-container {
+            position: absolute;
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
         }
-        .header .logo {
-            margin-right: 10px;
-            font-size: 32px;
-        }
+
         .hamburger {
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            width: 30px;
-            height: 24px;
+            width: 22px;
+            height: 18px;
             background: none;
             border: none;
             cursor: pointer;
             padding: 0;
         }
+
         .hamburger div {
-            background-color: white;
-            height: 4px;
+            background-color: #fff; /* White color for the hamburger lines */
+            height: 3px;
+            width: 100%;
         }
+
+        /* Logo Styling */
+        .logo-container {
+            flex: 1;
+            text-align: center;
+        }
+
+        .logo-container h1 {
+            font-size: 24px;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .logo-container .logo {
+            color: black; /* XXX in Black */
+        }
+
+        .logo-container .money {
+            color: red; /* MONEY in Red */
+        }
+
+        /* Navigation Menu */
         .menu {
             position: fixed;
             top: 60px;
             left: 0;
             right: 0;
-            background-color: #1f2937;
+            background-color: #1E40AF; /* Blue */
             color: white;
             display: none;
             flex-direction: column;
             padding: 20px;
-            z-index: 999;
+            z-index: 1000;
         }
+
         .menu a {
             color: white;
             font-size: 18px;
             padding: 10px 0;
             text-align: center;
             text-decoration: none;
+            transition: background-color 0.3s ease;
         }
+
         .menu a:hover {
-            background-color: #4b5563;
+            background-color: #1D4ED8; /* Darker Blue Hover Effect */
         }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: rgba(0, 0, 0, 0.5);
-            justify-content: center;
-            align-items: center;
-            z-index: 1001;
-        }
-        .modal .modal-content {
-            background-color: white;
+
+        /* Blog Section Styling */
+        #blog-posts {
+            margin-top: 80px; /* Space for header */
             padding: 20px;
-            border-radius: 8px;
-            width: 90%; /* Adjusted for mobile */
-            max-width: 400px;
-            display: flex;
-            flex-direction: column;
         }
-        .modal .modal-content input, .modal .modal-content textarea, .modal .modal-content button {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
+
+        h2 {
+            font-size: 28px;
+            color: #1E40AF; /* Blue for headings */
+            font-weight: bold;
+            margin-bottom: 20px;
         }
-        .subscribe-btn {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background-color: #6b21a8;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 50px;
-            font-size: 16px;
-            cursor: pointer;
-            z-index: 999;
-            border: none;
-        }
-        .subscribe-form {
-            display: none;
-            position: fixed;
-            bottom: 60px;
-            right: 10px;
-            flex-direction: column;
-            align-items: center;
-            background-color: white;
-            padding: 20px;
-            border-radius: 8px;
-            width: 80%;
-            max-width: 300px;
-            box-shadow: 0px 2px 10px rgba(0, 0, 0, 0.1);
-            z-index: 999;
-        }
-        .subscribe-form input, .subscribe-form button {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-        }
+
         .blog-post {
             padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            margin-bottom: 20px;
+            background-color: #fff; /* White background */
+            border-radius: 10px;
+            border: 1px solid #1E40AF; /* Blue border around posts */
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
+
         .post-title {
-            font-size: 24px;
+            font-size: 22px;
+            color: #000; /* Black for post titles */
             font-weight: bold;
-        }
-        .post-content {
-            margin-top: 10px;
-            font-size: 18px;
-        }
-        .post-date {
-            color: #6b7280;
-            font-size: 14px;
             margin-bottom: 10px;
         }
-        /* Mobile-first styles */
+
+        .post-date {
+            color: #1E40AF; /* Blue for post date */
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .post-content {
+            font-size: 18px;
+            color: #000; /* Black for post content */
+            line-height: 1.6;
+        }
+
+        iframe {
+            margin-top: 20px;
+            border-radius: 8px;
+        }
+
+        /* Responsive Layout for Mobile */
         @media (max-width: 768px) {
-            .header h1 {
+            .header {
+                flex-direction: column;
+                padding: 20px;
+            }
+
+            .hamburger-container {
+                position: absolute;
+                left: 20px;
+                top: 20px;
+            }
+
+            .logo-container h1 {
+                font-size: 22px;
+            }
+
+            .menu {
+                padding: 15px;
+            }
+
+            .menu a {
+                font-size: 16px;
+                padding: 8px 0;
+            }
+
+            #blog-posts {
+                padding: 10px;
+            }
+
+            .blog-post {
+                padding: 15px;
+            }
+
+            .post-title {
                 font-size: 20px;
-            }
-            .header .logo {
-                font-size: 28px;
-            }
-            .modal .modal-content {
-                width: 90%;
-            }
-            .subscribe-btn {
-                padding: 10px 18px;
-                font-size: 14px;
-            }
-            .subscribe-form {
-                width: 90%;
-                right: 5%;
-                bottom: 80px;
             }
         }
     </style>
 </head>
 <body>
 
+    <!-- Header with Hamburger Menu and Logo -->
     <header class="header">
-        <div>
+        <div class="hamburger-container">
             <button class="hamburger" onclick="toggleMenu()" aria-label="Toggle navigation menu">
                 <div></div>
                 <div></div>
                 <div></div>
             </button>
-            <h1><span class="logo">✓</span> XXX-MONEY</h1>
         </div>
-        <button class="theme-toggle-btn" onclick="toggleTheme()" aria-label="Toggle light and dark theme">🌙</button>
+        <div class="logo-container">
+            <h1><span class="logo">XXX</span><span class="money">-MONEY</span></h1>
+        </div>
     </header>
 
+    <!-- Navigation Menu -->
     <nav id="menu" class="menu">
         <a href="#">Home</a>
         <a href="#about">About</a>
@@ -199,6 +222,7 @@
         <a href="#" onclick="showAdminModal()">Admin</a>
     </nav>
 
+    <!-- Admin Modal -->
     <div id="admin-modal" class="modal">
         <div class="modal-content">
             <h2>Admin Login</h2>
@@ -207,16 +231,7 @@
         </div>
     </div>
 
-    <button class="subscribe-btn" onclick="showSubscribeForm()">Subscribe</button>
-
-    <div id="subscribe-form" class="subscribe-form">
-        <h3>Subscribe</h3>
-        <input type="text" id="name" placeholder="Enter your name" />
-        <input type="email" id="email" placeholder="Enter your email" />
-        <input type="text" id="number" placeholder="Enter your number" />
-        <button onclick="sendSubscription()">Send</button>
-    </div>
-
+    <!-- Admin Post Creation Modal -->
     <div id="admin-area" class="modal">
         <div class="modal-content">
             <h2>Create New Post</h2>
@@ -227,12 +242,14 @@
         </div>
     </div>
 
+    <!-- Main Content Area -->
     <main id="main-content">
         <section id="blog-posts" class="p-5">
             <h2>Latest Blog Posts</h2>
-            </section>
+        </section>
     </main>
 
+    <!-- JavaScript for Functionality -->
     <script>
         let posts = [];
 
@@ -240,11 +257,6 @@
         function toggleMenu() {
             const menu = document.getElementById("menu");
             menu.style.display = (menu.style.display === "flex") ? "none" : "flex";
-        }
-
-        // Toggle Theme (Light/Dark Mode)
-        function toggleTheme() {
-            document.body.classList.toggle("dark");
         }
 
         // Admin Modal Password Check
@@ -291,52 +303,35 @@
                 document.getElementById("post-content").value = "";
                 document.getElementById("post-video").value = "";
             } else {
-                alert("Title and Content are required.");
+                alert("Please enter both title and content");
             }
         }
 
         // Display Posts
         function displayPosts() {
-            const blogPostsContainer = document.getElementById("blog-posts");
-            blogPostsContainer.innerHTML = '<h2>Latest Blog Posts</h2>';
-            
-            const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
-            savedPosts.forEach(post => {
-                const postElement = document.createElement("article");
-                postElement.className = "blog-post";
+            const postSection = document.getElementById("blog-posts");
+            postSection.innerHTML = "<h2>Latest Blog Posts</h2>";
+            posts.forEach(post => {
+                const postElement = document.createElement("div");
+                postElement.classList.add("blog-post");
                 postElement.innerHTML = `
                     <h3 class="post-title">${post.title}</h3>
                     <p class="post-date">${post.date}</p>
                     <p class="post-content">${post.content}</p>
-                    ${post.videoUrl ? `<iframe width="100%" height="315" src="${post.videoUrl}" frameborder="0" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen title="Embedded YouTube video"></iframe>` : ''}
+                    ${post.videoUrl ? `<iframe width="100%" height="315" src="${post.videoUrl}" frameborder="0" allowfullscreen></iframe>` : ""}
                 `;
-                blogPostsContainer.appendChild(postElement);
+                postSection.appendChild(postElement);
             });
         }
 
-        // Subscribe Form
-        function showSubscribeForm() {
-            const form = document.getElementById("subscribe-form");
-            form.style.display = (form.style.display === "flex") ? "none" : "flex";
+        // On Page Load, get posts from local storage
+        window.onload = function () {
+            const storedPosts = localStorage.getItem("posts");
+            if (storedPosts) {
+                posts = JSON.parse(storedPosts);
+                displayPosts();
+            }
         }
-
-        function sendSubscription() {
-            const name = document.getElementById("name").value;
-            const email = document.getElementById("email").value;
-            const number = document.getElementById("number").value;
-            const message = `Name: ${name}\nEmail: ${email}\nPhone: ${number}`;
-            const whatsappUrl = `https://wa.me/1546350499?text=${encodeURIComponent(message)}`;
-            window.open(whatsappUrl, "_blank");
-            alert("Subscription info sent to WhatsApp!");
-            document.getElementById("subscribe-form").style.display = "none";
-        }
-
-        // Initial Load
-        window.onload = function() {
-            const storedPosts = JSON.parse(localStorage.getItem("posts")) || [];
-            posts = storedPosts;
-            displayPosts();
-        };
     </script>
 </body>
-    </html>
+</html>
